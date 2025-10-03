@@ -879,6 +879,8 @@ class MjxEnv(MujocoEnvironment):
         self._jit_batch_check = jax.jit(
             jax.vmap(self._check_single_pure, in_axes=(None, 0))
         )
+
+        self._batch_is_collision_free_optimized_jit = jax.jit(self._batch_is_collision_free_optimized)
         
         # Warm up JIT compilation
         # dummy_q = jax.numpy.zeros(len(self._all_robot_idx))
@@ -917,23 +919,30 @@ class MjxEnv(MujocoEnvironment):
             results = self._jit_batch_check(self.mjx_model, qposes)
             return results
 
-    def _batch_is_collision_free_optimized(self, qs):
-        """Optimized batch collision free check."""
+    def _batch_is_collision_free_optimized(self, qs, batch_size=64):
         if not qs:
             return True
-            
-        # Convert to JAX array once
-        qs_array = jax.numpy.stack(qs)
-        
-        print("B")
-        
-        # Use batch check
-        collision_free_results = self.check(qs_array)
 
-        print("A")
-        
-        # Single reduction operation
-        return jax.numpy.all(collision_free_results)
+        qs_array = jax.numpy.stack(qs)
+        n = qs_array.shape[0]
+        num_batches = (n + batch_size - 1) // batch_size
+
+        # Pad the last batch if necessary
+        pad_len = num_batches * batch_size - n
+        if pad_len > 0:
+            pad_qs = jax.numpy.zeros((pad_len,) + qs_array.shape[1:], dtype=qs_array.dtype)
+            qs_array = jax.numpy.concatenate([qs_array, pad_qs], axis=0)
+
+        # Reshape to (num_batches, batch_size, ...)
+        qs_batches = qs_array.reshape((num_batches, batch_size) + qs_array.shape[1:])
+
+        def body_fun(i, ok):
+            batch_result = self.check(qs_batches[i])
+            ok = ok & jax.numpy.all(batch_result)
+            return ok
+
+        all_ok = jax.lax.fori_loop(0, num_batches, body_fun, True)
+        return all_ok
 
     def _sequential_collision_check(self, qs):
         """Optimized sequential check - avoid unnecessary data mutations."""
@@ -1035,7 +1044,8 @@ class MjxEnv(MujocoEnvironment):
         use_parallel = True
 
         if use_parallel:
-            return self._batch_is_collision_free_optimized(qs)
+            # return self._batch_is_collision_free_optimized(qs)
+            return self._batch_is_collision_free_optimized_jit(qs)
         else:
             return self._sequential_collision_check(qs)
 
