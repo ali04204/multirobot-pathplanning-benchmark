@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 # abstract class for skills.
-class BaseSkill(ABC):
+class DeterministicBaseSkill(ABC):
   def __init__(self):
     pass
 
@@ -9,7 +9,35 @@ class BaseSkill(ABC):
   def step(self, q, env):
     pass
 
-class EEPoseGoalReaching(BaseSkill):
+
+# abstract class for stochastic skills.
+class StochasticBaseSkill(ABC):
+  def __init__(self):
+    pass
+
+  @abstractmethod
+  def step(self, q, env):
+    pass
+
+# abstract class for deterministic timed skills.
+class BaseDeterministicTimedSkill(ABC):
+  def __init__(self):
+    pass
+
+  @abstractmethod
+  def step(self, q, t, env):
+    raise NotImplementedError
+
+# abstract class for stochastic timed skills.
+class BaseStochasticTimedSkill(ABC):
+  def __init__(self):
+    pass
+
+  @abstractmethod
+  def step(self, q, t, env):
+    raise NotImplementedError
+
+class EEPoseGoalReaching(DeterministicBaseSkill):
   def __init__(self, goal, ee_name):
     self.goal = goal
     self.ee_name = ee_name
@@ -28,7 +56,7 @@ class EEPoseGoalReaching(BaseSkill):
     return q_new
 
 # simple pid controller
-class EEPositionGoalReaching(BaseSkill):
+class EEPositionGoalReaching(DeterministicBaseSkill):
   def __init__(self, goal, ee_name):
     self.goal = goal
     self.ee_name = ee_name
@@ -46,26 +74,16 @@ class EEPositionGoalReaching(BaseSkill):
     q_new = q + dt * q_dot
     return q_new
 
-# abstract class for skills.
-class BaseTimedSkill(ABC):
-  def __init__(self):
-    pass
-
-  @abstractmethod
-  def step(self, q, t, env):
-    raise NotImplementedError
-
-
 # question: can the mode be changed in a skill?
 # or does it need to be two skills?
-class VacuumGrasping(BaseTimedSkill):
+class VacuumGrasping(BaseDeterministicTimedSkill):
   def __init__(self, box_pos):
     pass
 
   def step(self, t, q, env):
     raise NotImplementedError
 
-class EndEffectorPoseFollowing(BaseTimedSkill):
+class EndEffectorPoseFollowing(BaseDeterministicTimedSkill):
   def __init__(self, line_start_pos, line_goal_pos, ee_name):
     self.line_start_pos = line_start_pos
     self.line_goal_pos = line_goal_pos
@@ -89,7 +107,7 @@ class EndEffectorPoseFollowing(BaseTimedSkill):
     raise NotImplementedError
 
 
-class EndEffectorPositionFollowing(BaseTimedSkill):
+class EndEffectorPositionFollowing(BaseDeterministicTimedSkill):
   def __init__(self, line_start_pos, line_goal_pos, ee_name):
     self.line_start_pos = line_start_pos
     self.line_goal_pos = line_goal_pos
@@ -104,7 +122,7 @@ class EndEffectorPositionFollowing(BaseTimedSkill):
     raise NotImplementedError
 
 # cool because it includes multiple robots.
-class DualRobotGrasping(BaseTimedSkill):
+class DualRobotGrasping(BaseDeterministicTimedSkill):
   def __init__(self):
     self.obj_path = 0
     self.ee_names = []
