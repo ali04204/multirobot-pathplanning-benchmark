@@ -45,8 +45,7 @@ class EEPositionGoalReaching(DeterministicBaseSkill):
     self.goal_position = goal
     self.ee_name = ee_name
 
-    self.kp = 1
-    self.kd = 0
+    self.qdot_clip = 0.2
 
   def step(self, q, env, dt=0.1):
     # get jacobian
@@ -55,6 +54,7 @@ class EEPositionGoalReaching(DeterministicBaseSkill):
     
     # compute pid law
     q_dot = np.linalg.pinv(jac) @ err
+    q_dot = np.clip(q_dot, a_min=-self.qdot_clip*np.ones(q_dot.shape), a_max=self.qdot_clip*np.ones(q_dot.shape))
 
     # integrate to get next pos
     q_new = q - dt * q_dot
@@ -66,6 +66,8 @@ class EEPoseGoalReaching(DeterministicBaseSkill):
     self.goal_pose = goal
     self.ee_name = ee_name
 
+    self.qdot_clip = 0.2
+
   def step(self, q, env, dt=0.1):
     # get jacobian
     env.C.setJointState(q)
@@ -73,6 +75,7 @@ class EEPoseGoalReaching(DeterministicBaseSkill):
     
     # compute pid law
     q_dot = np.linalg.pinv(jac) @ err
+    q_dot = np.clip(q_dot, a_min=-self.qdot_clip*np.ones(q_dot.shape), a_max=self.qdot_clip*np.ones(q_dot.shape))
 
     # integrate to get next pos
     q_new = q - dt * q_dot
@@ -94,22 +97,22 @@ class EndEffectorPoseFollowing(BaseDeterministicTimedSkill):
 
     self.ee_name = ee_name
 
+  def _get_desired_pose_at_time(self, t):
+    return self.line_start_pos + t * (self.line_goal_pos - self.line_start_pos)
+
   def step(self, t, q, env):
     # look up where we are on the trajctory
-    desired_next_pos = 0
-    current_ee_pos = 0
-    jac = 0
+    desired_next_pos = self._get_desired_pose_at_time(t)
 
-    # return pt
-    pos_error = 0
-    rot_error = log_map_rot_error()
-    err = [pos_error, rot_error]
-    q_dot = gain * jac @ err
+    env.C.setJointState(q)
+    [err, jac] = env.C.eval(robotic.FS.pose, [self.ee_name], 1, desired_next_pos)
+    
+    # compute pid law
+    q_dot = np.linalg.pinv(jac) @ err
 
-    q_new = q + q_dot * dt
-
-    raise NotImplementedError
-
+    # integrate to get next pos
+    q_new = q - dt * q_dot
+    return q_new
 
 class EndEffectorPositionFollowing(BaseDeterministicTimedSkill):
   def __init__(self, line_start_pos, line_goal_pos, ee_name):
@@ -137,14 +140,20 @@ class EndEffectorPositionFollowing(BaseDeterministicTimedSkill):
 
 # cool because it includes multiple robots.
 class DualRobotGrasping(BaseDeterministicTimedSkill):
-  def __init__(self):
-    self.obj_path = 0
+  def __init__(self, ee_names, obj_name, obj_start_pos, obj_end_pos):
+    self.obj_start_pos = obj_start_pos
+    self.obj_end_pos = obj_end_pos
+    
     self.ee_names = []
+    self.obj_name = obj_name
 
-    self.obj_name = 0
+  def _get_desired_obj_pose_at_time(self, t):
+    return self.obj_start_pos + t * (self.obj_end_pos - self.obj_start_pos)
 
-  def step(self, t, q, env):
+  def step(self, t, q, env, dt=0.1):
     # get desired position of obj at time
+    desired_pos = self._get_desired_obj_pose_at_time(t)
+    
     # get ee-pos
     # get jacobians
     # do ik to compute the positions of the end effectors
@@ -153,3 +162,19 @@ class DualRobotGrasping(BaseDeterministicTimedSkill):
 
 # Note: might be a cooler demo if we also have skills that are 'env aware'
 # might also be more interesting planning wise.
+class Insertion(StochasticBaseSkill):
+  def __init__():
+    pass
+
+  def step(self, q, env, dt=0.1):
+    # query the policy
+    # onnx?
+    # decide noise level ourselves?
+    pass
+
+class Grasping(StochasticBaseSkill):
+  def __init__():
+    pass
+
+  def step(self, q, env, dt=0.1):
+    pass

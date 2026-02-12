@@ -37,5 +37,5 @@ def timed_skill():
       env.C.view(True)
 
 if __name__ == "__main__":
-    # base_skill()
-    timed_skill()
+    base_skill()
+    # timed_skill()
