@@ -1,6 +1,7 @@
 import numpy as np
 
 import time
+from functools import partial
 
 from typing import List, Optional
 from numpy.typing import NDArray
@@ -851,10 +852,18 @@ class OptimizedMujocoEnvironment(MujocoEnvironment):
 
 class MjxEnv(MujocoEnvironment):
     def __init__(self, xml_path):
+        # jax.config.update("jax_log_compiles", True)
+
         super().__init__(xml_path)
 
         self.mjx_model = mjx.put_model(self.model)
         self.mjx_data = mjx.make_data(self.mjx_model)
+
+
+        self.mjx_model = jax.tree.map(
+            lambda x: jnp.asarray(x) if isinstance(x, np.ndarray) else x,
+            self.mjx_model,
+        )
         
         # n_batch = 4096
         # self.n_batch = 512
@@ -873,8 +882,9 @@ class MjxEnv(MujocoEnvironment):
         self.jit_step = jax.jit(mjx.step)
         
         # Pre-compile single collision check
-        self._jit_single_check = jax.jit(self._check_single_pure)
-        
+        # self._jit_single_check = jax.jit(self._check_single_pure)
+        self._jit_single_check = self._make_single_check()
+
         # Pre-compile batch operations with fixed signatures
         self._jit_batch_check = jax.jit(
             jax.vmap(self._check_single_pure, in_axes=(None, 0))
@@ -888,6 +898,23 @@ class MjxEnv(MujocoEnvironment):
         
         # Pre-allocate reusable data structure to reduce allocations
         self._temp_data = self.mjx_data
+
+    def _make_single_check(self):
+        mjx_data = self.mjx_data
+        all_robot_idx = self._all_robot_idx
+        collision_tol = 0.001
+        jit_fwd = self.jit_fwd
+
+        @partial(jax.jit, static_argnums=(0,))
+        def _check(model, qpos):
+            base_qpos = mjx_data.qpos
+            updated_qpos = base_qpos.at[all_robot_idx].set(qpos)
+            temp_data = mjx_data.replace(qpos=updated_qpos)
+            temp_data = jit_fwd(model, temp_data)
+            has_collision = jax.numpy.any(temp_data.contact.dist < -collision_tol)
+            return jax.numpy.logical_not(has_collision)
+
+        return _check
 
     def _check_single_pure(self, model, qpos):
         """Pure function: single configuration collision check.
@@ -941,6 +968,8 @@ class MjxEnv(MujocoEnvironment):
             ok = ok & jax.numpy.all(batch_result)
             return ok
 
+        jax.debug.print("{x}", x=num_batches)
+
         all_ok = jax.lax.fori_loop(0, num_batches, body_fun, True)
         return all_ok
 
@@ -969,10 +998,15 @@ class MjxEnv(MujocoEnvironment):
         """Fixed single collision check."""
         assert not self.manipulating_env
         
-        q_state = q.state()
+        # print("A")
+
+        # with jax.profiler.trace("/tmp/jax-trace", create_perfetto_link=True):
+        q_state = jax.numpy.array(q.state())
         
         # Use the pre-compiled single check function
-        return self._jit_single_check(self.mjx_model, q_state)
+        res = self._jit_single_check(self.mjx_model, q_state)
+
+        return res
 
     # def is_collision_free(self, q: Optional[Configuration], mode: Optional[Mode]):
     #     assert not self.manipulating_env
@@ -1368,6 +1402,10 @@ class four_arm_ur10_mujoco_env(SequenceMixin, MjxEnv):
             "ur10_3": np.array([0, -2, 1.0, -1.0, -1.57, 1.0]),
             "ur10_4": np.array([0, -2, 1.0, -1.0, -1.57, 1.0]),
         }
+
+        # call once so its compiled
+        self._jit_single_check(self.mjx_model, self.start_pos.state())
+        
 
 @register("mujoco.single_ur10")
 class single_arm_ur10_mujoco_env(SequenceMixin, MjxEnv):
