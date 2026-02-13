@@ -1,22 +1,22 @@
 import robotic as ry
 import numpy as np
-from .planning_env import (
+from ..planning_env import (
     BaseModeLogic,
     UnorderedButAssignedMixin,
     Task,
     SafePoseType,
     ManipulationType
 )
-from .goals import (
+from ..goals import (
     SingleGoal,
     GoalSet,
     GoalRegion,
     ConditionalGoal,
 )
-from .rai_base_env import rai_env
-import multi_robot_multi_goal_planning.problems.rai_config as rai_config
+from ..rai_base_env import rai_env
+import multi_robot_multi_goal_planning.problems.rai.rai_config as rai_config
 
-from .registry import register
+from ..registry import register
 
 @register("rai.unordered")
 class rai_two_dim_env(UnorderedButAssignedMixin, rai_env):
