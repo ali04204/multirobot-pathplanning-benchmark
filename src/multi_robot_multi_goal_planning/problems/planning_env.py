@@ -88,6 +88,7 @@ class Task:
         side_effect=None,
         side_effect_data=None,
         constraints=[],
+        skill=None
     ):
         self.robots = robots
         self.goal = goal
@@ -102,6 +103,10 @@ class Task:
         self.side_effect_data = side_effect_data
 
         self.constraints = constraints
+
+        if skill is not None:
+            self.is_skill = True
+            self.skill = skill
 
 
 class Mode:

@@ -3,6 +3,11 @@ import numpy as np
 from abc import ABC, abstractmethod
 import robotic
 
+##########
+# Note: might be a cooler demo if we also have skills that are 'env aware'
+# might also be more interesting planning wise.
+##########
+
 # abstract class for skills.
 class DeterministicBaseSkill(ABC):
   def __init__(self):
@@ -11,7 +16,6 @@ class DeterministicBaseSkill(ABC):
   @abstractmethod
   def step(self, q, env):
     pass
-
 
 # abstract class for stochastic skills.
 class StochasticBaseSkill(ABC):
@@ -159,9 +163,6 @@ class DualRobotGrasping(BaseDeterministicTimedSkill):
     # do ik to compute the positions of the end effectors
     raise NotImplementedError
 
-
-# Note: might be a cooler demo if we also have skills that are 'env aware'
-# might also be more interesting planning wise.
 class Insertion(StochasticBaseSkill):
   def __init__():
     pass
@@ -173,6 +174,26 @@ class Insertion(StochasticBaseSkill):
     pass
 
 class Grasping(StochasticBaseSkill):
+  def __init__():
+    pass
+
+  def step(self, q, env, dt=0.1):
+    pass
+
+class Handover(DeterministicBaseSkill):
+  pass
+
+class Screw(DeterministicBaseSkill):
+  def __init__(speed, idx):
+    self.speed = speed
+    self.idx = idx
+
+  def step(self, q, env, dt=0.1):
+    qn = q
+    qn[idx] += speed
+    return qn
+
+class PrecomputedSkillDistribution(StochasticBaseSkill):
   def __init__():
     pass
 
