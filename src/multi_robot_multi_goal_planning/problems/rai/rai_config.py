@@ -8027,10 +8027,64 @@ def make_single_agent_drawing(view: bool = False):
 
     # keyframes:
     # draw start location (ee-goal)
-    def compute_ik():
-        pass
+    def compute_ik(robot_prefix, pos):
+        c_tmp = ry.Config()
+        c_tmp.addConfigurationCopy(C)
 
-    drawing_start_pos = compute_ik()
+        robot_base = robot_prefix + "ur_base"
+        c_tmp.selectJointsBySubtree(c_tmp.getFrame(robot_base))
+
+        q_home = c_tmp.getJointState()
+
+        komo = ry.KOMO(
+            c_tmp, phases=2, slicesPerPhase=1, kOrder=1, enableCollisions=True
+        )
+        komo.addObjective(
+            [], ry.FS.accumulatedCollisions, [], ry.OT.ineq, [1e1], [-0.0]
+        )
+
+        komo.addControlObjective([], 0, 1e-1)
+        komo.addControlObjective([], 1, 1e-1)
+        # komo.addControlObjective([], 2, 1e-1)
+
+        komo.addObjective(
+            [1],
+            ry.FS.position,
+            [robot_prefix + "stick_ee"],
+            ry.OT.eq,
+            [1, 1, 0],
+            [pos[0], pos[1], 0],
+        )
+        komo.addObjective(
+            [1],
+            ry.FS.vectorZ,
+            [robot_prefix + "stick_ee"],
+            ry.OT.eq,
+            [1],
+            [0, 0, -1],
+        )
+        komo.addObjective(
+            [1],
+            ry.FS.position,
+            [robot_prefix + "stick_ee"],
+            ry.OT.eq,
+            [0, 0, 1],
+            [0, 0, 0.26],
+        )
+
+        komo.addObjective(
+            times=[2, -1],
+            feature=ry.FS.jointState,
+            frames=[],
+            type=ry.OT.eq,
+            scale=[1e0],
+            target=q_home,
+        )
+
+        keyframes = solve_komo_problem(komo, 20, c_tmp, False, 3, -1.5)
+        return keyframes[0, :]
+
+    drawing_start_pos = compute_ik("a1_", [-0.5, 0, 0.1])
 
     return C, [drawing_start_pos]
 

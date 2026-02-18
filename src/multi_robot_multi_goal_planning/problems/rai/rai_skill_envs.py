@@ -29,7 +29,8 @@ from ..planning_env import (
 
 from ..skills import (
     EEPoseGoalReaching,
-    JogJoint
+    JogJoint,
+    EndEffectorPositionFollowing
 )
 
 from ..goals import (
@@ -99,6 +100,7 @@ class rai_single_agent_screw(SequenceMixin, rai_env):
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
 
+# Debugging for single agent timed skill
 @register("rai.single_agent_drawing")
 class rai_single_agent_drawing(SequenceMixin, rai_env):
     def __init__(self):
@@ -111,11 +113,12 @@ class rai_single_agent_drawing(SequenceMixin, rai_env):
 
         home_pose = self.C.getJointState()
 
+        table_height = 0.1
         pts = [
             np.array([-0.5, 0, table_height]), 
             np.array([0.5, 0, table_height])
         ]
-        path = LineSegment(pts)
+        # path = LineSegment(pts)
 
         self.tasks = [
             Task(
@@ -126,8 +129,8 @@ class rai_single_agent_drawing(SequenceMixin, rai_env):
             Task(
                 "draw",
                 ["a1"],
-                SingleGoal(np.array([0.5, 0.5, 0])),
-                skill = EndEffectorPositionFollowing(path)
+                SingleGoal(poses[0]), # TODO: figure out how to do skill goal checking
+                skill = EndEffectorPositionFollowing(*pts, "a1_stick_ee")
             ),
             Task(
                 "terminal",
