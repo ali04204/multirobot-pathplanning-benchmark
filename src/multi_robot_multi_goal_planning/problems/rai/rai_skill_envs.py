@@ -151,6 +151,7 @@ class rai_single_agent_drawing(SequenceMixin, rai_env):
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
 
+# TODO unfinished
 @register("rai.single_agent_lego")
 class rai_single_agent_lego(SequenceMixin, rai_env):
     def __init__(self):
@@ -217,6 +218,8 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
 
         rai_env.__init__(self)
 
+        self.manipulating_env = True
+
         home_pose = self.C.getJointState()
 
         pick_position = self.C.getFrame("obj1").getPose()
@@ -233,6 +236,7 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
                 ["a1"],
                 SingleGoal(home_pose),
                 frames=["a1_ur_ee_marker", "obj1"],
+                type="pick",
                 skill = EEPoseGoalReaching(pick_position, "a1_ur_ee_marker")
             ),
             Task(
@@ -245,6 +249,7 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
                 ["a1"],
                 SingleGoal(home_pose),
                 skill = EEPoseGoalReaching(place_position, "obj1"),
+                type="place",
                 frames=["table", "obj1"]
             ),
             Task(
@@ -266,14 +271,17 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
+# TODO unfinished
 @register("rai.single_agent_scripted_insert")
 class rai_single_agent_scripted_insert(SequenceMixin, rai_env):
   pass
 
+# TODO unfinished
 @register("rai.single_agent_learned_insert")
 class rai_single_agent_learned_insert(SequenceMixin, rai_env):
   pass
 
+# TODO unfinished
 # multi agent rearrangement with skills
 @register("rai.multi_agent_rearrangement")
 class rai_multi_agent_pick_and_place(SequenceMixin, rai_env):
@@ -305,6 +313,7 @@ class rai_multi_agent_pick_and_place(SequenceMixin, rai_env):
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
 
+# TODO unfinished
 # multi agent rearrangement with skills
 @register("rai.multi_agent_stacking")
 class rai_multi_agent_stacking(SequenceMixin, rai_env):
@@ -335,6 +344,39 @@ class rai_multi_agent_stacking(SequenceMixin, rai_env):
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
+
+# TODO unfinished
+# multi agent rearrangement with skills
+@register("rai.multi_agent_dexterous_stacking")
+class rai_multi_agent_stacking(SequenceMixin, rai_env):
+    def __init__(self, num_agents=4, num_objects=4):
+        self.C, poses = rai_config.make_multi_agent_stacking()
+        # self.C.view(True)
+
+        self.robots = ["a1"]
+
+        rai_env.__init__(self)
+
+        home_pose = self.C.getJointState()
+
+        self.tasks = []
+        named_sequence = []
+
+        for robot, task in poses:
+            pass
+
+        self.sequence = self._make_sequence_from_names(
+          named_sequence
+        )
+
+        self.collision_tolerance = 0.001
+        self.collision_resolution = 0.005
+
+        BaseModeLogic.__init__(self)
+
+        self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
+
+# TODO unfinished
 # draw the crl logo with 3 robots:
 # TODO this should be an unordered problem
 @register("rai.multi_agent_drawing")
@@ -364,12 +406,13 @@ class rai_multi_agent_insert(SequenceMixin, rai_env):
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
 
+# TODO unfinished
 # four robot, same welding env as before
 # welding lines here
 @register("rai.multi_agent_line_weld")
 class rai_multi_agent_weld(SequenceMixin, rai_env):
     def __init__(self):
-        self.C = rai_config.make_simple_skill_welding_env()
+        self.C = rai_config.make_multi_agent_skill_welding_env(num_robots=4, num_lines=4)
         # self.C.view(True)
 
         self.robots = ["a1", "a2", "a3"]
@@ -392,10 +435,12 @@ class rai_multi_agent_weld(SequenceMixin, rai_env):
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
+# TODO unfinished
 @register("rai.multi_agent_pcb")
 class rai_multi_agent_pcb(SequenceMixin, rai_env):
   pass
 
+# TODO unfinished
 # kids game: https://www.youtube.com/watch?v=Ddertj2CG3I
 # vision based insertion?
 # vision based grasping?
@@ -403,6 +448,7 @@ class rai_multi_agent_pcb(SequenceMixin, rai_env):
 class rai_multi_agent_insert(SequenceMixin, rai_env):
   pass
 
+# TODO unfinished
 # pick 'any' item from a bin
 # Stochastic skill
 @register("rai.single_agent_bin_picking")
@@ -435,6 +481,7 @@ class rai_single_agent_bin_picking(SequenceMixin, rai_env):
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
+# TODO unfinished
 # pick 'any' item from a bin
 # Stochastic skill
 # TODO: can a skill determine which frame will be linked??
@@ -465,6 +512,7 @@ class rai_multi_agent_bin_picking(SequenceMixin, rai_env):
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
+# TODO unfinished
 # skills: 
 # - multiple robots -> fast pcb assembly?
 # - bimanual skill with reorientation of obj? holding?
@@ -477,16 +525,83 @@ class rai_bimanual_assembly(SequenceMixin, rai_env):
   # - idally both at some pt.
   pass
 
+# TODO unfinished
 # inspiration: https://arxiv.org/pdf/2511.04758
 @register("rai.bimanual_sorting")
 class rai_bimanual_sorting(SequenceMixin, rai_env):
-  pass
+    def __init__(self):
+        self.C, a1_keyframes, a2_keyframes = rai_config.make_bimanual_sorting()
+        # self.C.view(True)
 
+        self.robots = ["a1", "a2"]
+
+        rai_env.__init__(self)
+        self.manipulating_env = True
+
+        home_pose = self.C.getJointState()
+
+        self.tasks = []
+
+        for robot_name, [pre_pick, pre_place], obj_name, goal_name in zip(self.robots, [a1_keyframes, a2_keyframes], ["obj1", "obj2"], ["goal1", "goal2"]):
+            pick_position = self.C.getFrame(obj_name).getPose()
+            place_position = self.C.getFrame(goal_name).getPose()
+            
+            self.tasks.extend([
+                Task(
+                    robot_name + "_pre_pick",
+                    [robot_name],
+                    SingleGoal(pre_pick),
+                ),
+                Task(
+                    robot_name + "_pick",
+                    [robot_name],
+                    SingleGoal(pre_pick),
+                    frames=[robot_name + "_ur_gripper_center", obj_name],
+                    type="pick",
+                    skill = EEPoseGoalReaching(pick_position, robot_name + "ur_gripper_center")
+                ),
+                Task(
+                    robot_name + "_pre_place",
+                    [robot_name],
+                    SingleGoal(pre_place),
+                ),
+                Task(
+                    robot_name + "_place",
+                    [robot_name],
+                    SingleGoal(pre_place),
+                    skill = EEPoseGoalReaching(place_position, obj_name),
+                    type="place",
+                    frames=["table", obj_name]
+                )
+            ]
+            )
+
+        self.tasks.append(
+            Task(
+                "terminal",
+                self.robots,
+                SingleGoal(home_pose),
+            ),
+        )
+
+        self.sequence = self._make_sequence_from_names(
+            ["a1_pre_pick", "a1_pick", "a2_pre_pick", "a2_pick", "a1_pre_place", "a1_place", "a2_pre_place", "a2_place", "terminal"]
+        )
+
+        self.collision_tolerance = 0.001
+        self.collision_resolution = 0.005
+
+        BaseModeLogic.__init__(self)
+
+        self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
+
+# TODO unfinished
 # inspiration: https://arxiv.org/pdf/2511.04758
 @register("rai.so_100_sorting")
 class rai_so_100_sorting(SequenceMixin, rai_env):
   pass
 
+# TODO unfinished
 # skills: 
 # - screwing
 # - placing
@@ -495,6 +610,7 @@ class rai_so_100_sorting(SequenceMixin, rai_env):
 class rai_husky_assembly(SequenceMixin, rai_env):
   pass
 
+# TODO unfinished
 # skills: 
 # - grasping -> deterministic
 # - insertion -> stochastic
@@ -503,6 +619,7 @@ class rai_husky_assembly(SequenceMixin, rai_env):
 class rai_yijiang_corl(SequenceMixin, rai_env):
   pass
 
+# TODO unfinished
 # skills: 
 # - tying wire knots
 # - inserting rods?
@@ -510,6 +627,7 @@ class rai_yijiang_corl(SequenceMixin, rai_env):
 class rai_mesh(SequenceMixin, rai_env):
   pass
 
+# TODO unfinished
 # skill to follow curved surface
 @register("rai.polishing")
 class rai_polising(SequenceMixin, rai_env):
