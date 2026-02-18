@@ -7916,8 +7916,98 @@ def make_ur10_screwing_env(view: bool = False):
     keyframes = []
 
     # compute keyframe for pick
-    # compute keyframe for pre-grasp
+    def compute_pick_pose():
+        pass
+
+    # compute keyframe for pre-screw
+    def compute_pre_screw_pose():
+        pass
 
     C.view(True)
 
-    return C, all_robots
+    pick_pose = compute_pick_pose()
+    pre_screw_pose = compute_pre_screw_pose()
+
+    return C, all_robots, [pick_pose, pre_screw_pose]
+
+
+def make_single_agent_drawing(view: bool = False):
+    C = ry.Config()
+
+    C.addFrame("floor").setPosition([0, 0, 0.0]).setShape(
+        ry.ST.box, size=[20, 20, 0.02, 0.005]
+    ).setColor([0.9, 0.9, 0.9]).setContact(0)
+
+    table = (
+        C.addFrame("table")
+        .setPosition([0, 0, 0.2])
+        .setShape(ry.ST.box, size=[2, 3, 0.06, 0.005])
+        .setColor([0.6, 0.6, 0.6])
+        .setContact(1)
+    )
+
+    robot_path = os.path.join(os.path.dirname(__file__), "../../assets/models/rai/ur10/ur10_vacuum.g")
+
+    C.addFile(robot_path, namePrefix="a1_").setParent(
+        C.getFrame("table")
+    ).setRelativePosition([-0.5, 0.5, 0]).setRelativeQuaternion(
+        [0.7071, 0, 0, -0.7071]
+    ).setJoint(ry.JT.rigid)
+
+    C.addFrame("a1_stick").setParent(C.getFrame("a1_ur_vacuum")).setShape(
+        ry.ST.cylinder, size=[0.3, 0.02]
+    ).setColor([0.1, 0.1, 0.1]).setRelativeQuaternion([0.707, 0, 0.707, 0]).setRelativePosition([0.2, 0, 0.]).setContact(-1)
+
+    C.addFrame("a1_stick_ee").setParent(C.getFrame("a1_stick")).setShape(
+        ry.ST.sphere, size=[0.02]
+    ).setColor([1, 0, 0, 0.5]).setRelativePosition([0, 0, 0.15]).setContact(-1)
+
+    C.view(True)
+
+    # keyframes:
+    # draw start location (ee-goal)
+    def compute_ik():
+        pass
+
+    drawing_start_pos = compute_ik()
+
+    return C, [drawing_start_pos]
+
+
+def make_single_agent_pick_and_place(view: bool = False):
+    C = ry.Config()
+
+    C.addFrame("floor").setPosition([0, 0, 0.0]).setShape(
+        ry.ST.box, size=[20, 20, 0.02, 0.005]
+    ).setColor([0.9, 0.9, 0.9]).setContact(0)
+
+    table = (
+        C.addFrame("table")
+        .setPosition([0, 0, 0.2])
+        .setShape(ry.ST.box, size=[2, 3, 0.06, 0.005])
+        .setColor([0.6, 0.6, 0.6])
+        .setContact(1)
+    )
+
+    robot_path = os.path.join(os.path.dirname(__file__), "../../assets/models/rai/ur10/ur10_two_finger.g")
+
+    C.addFile(robot_path, namePrefix="a1_").setParent(
+        C.getFrame("table")
+    ).setRelativePosition([-0.5, 0.5, 0]).setRelativeQuaternion(
+        [0.7071, 0, 0, -0.7071]
+    ).setJoint(ry.JT.rigid)
+
+    # add obj
+
+    C.view(True)
+
+    # keyframes:
+    # draw start location (ee-goal)
+    def compute_ik():
+        pass
+
+    pre_pick_pose = compute_ik()
+    pre_place_pose = compute_ik()
+
+    return C, [pre_pick_pose, pre_place_pose]
+
