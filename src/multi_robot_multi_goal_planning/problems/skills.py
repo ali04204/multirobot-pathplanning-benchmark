@@ -266,7 +266,7 @@ class Handover(DeterministicBaseSkill):
     raise NotImplementedError
 
 class JogJoint(BaseDeterministicTimedSkill):
-  def __init__(speed, idx, duration):
+  def __init__(self, speed, idx, duration):
     self.speed = speed
     self.idx = idx
     self.duration = duration
@@ -283,7 +283,7 @@ class JogJoint(BaseDeterministicTimedSkill):
     return False
 
 class Screw(DeterministicBaseSkill):
-  def __init__(speed, ee_name):
+  def __init__(self,speed, ee_name):
     self.speed = speed
     self.ee_name = ee_name
 

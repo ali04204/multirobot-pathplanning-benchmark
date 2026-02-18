@@ -29,7 +29,7 @@ from ..planning_env import (
 
 from ..skills import (
     EEPoseGoalReaching,
-    Screw
+    JogJoint
 )
 
 from ..goals import (
@@ -49,35 +49,40 @@ from ..registry import register
 @register("rai.single_agent_screw")
 class rai_single_agent_screw(SequenceMixin, rai_env):
     def __init__(self):
-        self.C, self.robots,[pick_pose, pre_screw_pose] = rai_config.make_ur10_screwing_env()
+        self.C, self.robots, [pick_pose, pre_screw_pose] = rai_config.make_ur10_screwing_env()
         # self.C.view(True)
+
+        print(pick_pose, pre_screw_pose)
 
         rai_env.__init__(self)
 
         home_pose = self.C.getJointState()
 
+        post_screw_pose = pre_screw_pose * 1.
+        post_screw_pose[-1] += 2. * np.pi/2.
+
         self.tasks = [
             Task(
                 "pick",
-                ["a1"],
+                [self.robots[0]],
                 SingleGoal(pick_pose),
-                frames=["a1_ur_ee_marker", "obj1"]
+                frames=["a1_ur_gripper_center", "obj1"]
             ),
             Task(
                 "pre_screw",
-                ["a1"],
+                [self.robots[0]],
                 SingleGoal(pre_screw_pose),
             ),
             Task(
                 "screw",
-                ["a1"],
-                SingleGoal(np.array([0.5, 0.5, 0])),
+                [self.robots[0]],
+                SingleGoal(post_screw_pose),
                 frames=["table", "obj1"],
-                skill = JogJoint(0.5, idx=6, duration=2.) # just moving the final joint for a fixed time
+                skill = JogJoint(speed=np.pi/2., idx=6, duration=2.) # just moving the final joint for a fixed time
             ),
             Task(
                 "terminal",
-                ["a1"],
+                [self.robots[0]],
                 SingleGoal(home_pose),
             ),
         ]
