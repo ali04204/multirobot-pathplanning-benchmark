@@ -8114,15 +8114,89 @@ def make_single_agent_pick_and_place(view: bool = False):
 
     # add obj
 
+    C.addFrame("obj1").setParent(table).setShape(
+        ry.ST.box, [0.05, 0.05, 0.025, 0.5]
+    ).setRelativePosition([-0.5, 0., 0.1]).setMass(
+        0.1
+    ).setColor([1, 0, 0]).setContact(1).setJoint(ry.JT.rigid)
+
+    C.addFrame("goal1").setParent(table).setShape(
+        ry.ST.marker, [0.1, 0.005]
+    ).setRelativePosition([0.5, 0., 0.1]).setContact(
+        0
+    ).setJoint(ry.JT.rigid)
+
+    C.addFrame("obs1").setParent(table).setShape(
+        ry.ST.box, size=[0.1, 0.4, 0.2, 0.005]
+    ).setContact(1).setRelativePosition(
+        [0, -0.0, 0.15]
+    ).setJoint(ry.JT.rigid)
+
     C.view(True)
 
     # keyframes:
     # draw start location (ee-goal)
-    def compute_ik():
-        pass
+    def compute_poses(c_tmp, robot_prefix, box, goal):
+        # set everything but the current box to non-contact
+        robot_base = robot_prefix + "base"
+        c_tmp.selectJointsBySubtree(c_tmp.getFrame(robot_base))
 
-    pre_pick_pose = compute_ik()
-    pre_place_pose = compute_ik()
+        q_home = c_tmp.getJointState()
+
+        komo = ry.KOMO(
+            c_tmp, phases=2, slicesPerPhase=1, kOrder=1, enableCollisions=True
+        )
+        komo.addObjective(
+            [], ry.FS.accumulatedCollisions, [], ry.OT.ineq, [1e1], [-0.0]
+        )
+
+        komo.addControlObjective([], 0, 1e-1)
+        # komo.addControlObjective([], 1, 1e-1)
+        # komo.addControlObjective([], 2, 1e-1)
+
+        pre_grasp_offset = 0.05
+
+        komo.addModeSwitch([1, 2], ry.SY.stable, [robot_prefix + "gripper", box])
+        komo.addObjective(
+            [1, 2],
+            ry.FS.positionDiff,
+            [robot_prefix + "gripper_center", box],
+            ry.OT.sos,
+            [1e1, 1e1, 1],
+            target=[0, 0, pre_grasp_offset]
+        )
+        komo.addObjective(
+            [1, 2],
+            ry.FS.scalarProductZZ,
+            [robot_prefix + "gripper_center", box],
+            ry.OT.sos,
+            [5e1],
+            [-1],
+        )
+        komo.addObjective(
+            [1, 2],
+            ry.FS.scalarProductXX,
+            [robot_prefix + "gripper_center", box],
+            ry.OT.sos,
+            [1e1],
+            [1],
+        )
+
+        komo.addObjective([2, -1], ry.FS.poseDiff, [goal, box], ry.OT.eq, [1e1])
+
+        komo.addObjective(
+            times=[3, -1],
+            feature=ry.FS.jointState,
+            frames=[],
+            type=ry.OT.eq,
+            scale=[1e0],
+            target=q_home,
+        )
+
+        keyframes = solve_komo_problem(komo, 5, c_tmp, True, 3, -1.5)
+        return keyframes
+
+    pre_pick_pose, pre_place_pose = compute_poses(C, "a1_ur_", "obj1", "goal1")
 
     return C, [pre_pick_pose, pre_place_pose]
 

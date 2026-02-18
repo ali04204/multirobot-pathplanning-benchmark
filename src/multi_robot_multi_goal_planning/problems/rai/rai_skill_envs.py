@@ -206,6 +206,7 @@ class rai_single_agent_lego(SequenceMixin, rai_env):
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
 
+# TODO: enable mode to only plan for a subset of dofs
 @register("rai.single_agent_pick_and_place")
 class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
     def __init__(self):
@@ -218,8 +219,8 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
 
         home_pose = self.C.getJointState()
 
-        pick_position = []
-        place_position = []
+        pick_position = self.C.getFrame("obj1").getPose()
+        place_position = self.C.getFrame("goal1").getPose()
 
         self.tasks = [
             Task(
@@ -230,9 +231,9 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
             Task(
                 "pick",
                 ["a1"],
-                SingleGoal(np.array([0.5, 0.5, 0])),
+                SingleGoal(home_pose),
                 frames=["a1_ur_ee_marker", "obj1"],
-                skill = EEPoseGoalReaching(pick_position)
+                skill = EEPoseGoalReaching(pick_position, "a1_ur_ee_marker")
             ),
             Task(
                 "pre_place",
@@ -242,8 +243,8 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
             Task(
                 "place",
                 ["a1"],
-                SingleGoal(np.array([0.5, 0.5, 0])),
-                skill = EEPoseGoalReaching(place_position),
+                SingleGoal(home_pose),
+                skill = EEPoseGoalReaching(place_position, "obj1"),
                 frames=["table", "obj1"]
             ),
             Task(
