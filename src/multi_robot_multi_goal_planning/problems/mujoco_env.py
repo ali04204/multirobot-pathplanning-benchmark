@@ -897,7 +897,8 @@ class MjxEnv(MujocoEnvironment):
         )
 
         # self._batch_is_collision_free_optimized_jit = jax.jit(self._batch_is_collision_free_optimized)
-        self._batch_is_collision_free_optimized_jit = self._batch_is_collision_free_optimized
+        # self._batch_is_collision_free_optimized_jit = self._batch_is_collision_free_optimized
+        self._jit_chunk_check = self._make_edge_check(chunk_size=64)
         
         # Warm up JIT compilation
         dummy_q = jax.numpy.zeros(len(self._all_robot_idx))
@@ -905,6 +906,75 @@ class MjxEnv(MujocoEnvironment):
         
         # Pre-allocate reusable data structure to reduce allocations
         self._temp_data = self.mjx_data
+
+    def _make_edge_check(self, chunk_size: int = 64):
+        all_robot_idx = self._all_robot_idx
+        collision_tol = 0.001
+        jit_fwd = self.jit_fwd
+        mjx_data = self.mjx_data
+        mjx_model = self.mjx_model
+        base_qpos = mjx_data.qpos
+
+        @jax.jit
+        def _check_chunk(qs):
+            """qs: (chunk_size, dof)"""
+            def check_one(q):
+                updated_qpos = base_qpos.at[all_robot_idx].set(q)
+                temp_data = mjx_data.replace(qpos=updated_qpos)
+                temp_data = jit_fwd(mjx_model, temp_data)
+                return jax.numpy.any(temp_data.contact.dist < -collision_tol)
+
+            has_collision = jax.vmap(check_one)(qs)
+            return jax.numpy.logical_not(jax.numpy.any(has_collision))
+
+        return _check_chunk
+
+    # def _batch_is_collision_free_optimized_jit(self, qs, chunk_size: int = 128):
+    #     a = time.time()
+    #     if not qs:
+    #         return True
+
+    #     n = len(qs)
+    #     dof = qs[0].shape[0]
+        
+    #     for start in range(0, n, chunk_size):
+    #         chunk_qs = qs[start:start + chunk_size]
+    #         actual = len(chunk_qs)
+            
+    #         # Pad with last element if needed
+    #         if actual < chunk_size:
+    #             chunk_qs = chunk_qs + [chunk_qs[-1]] * (chunk_size - actual)
+            
+    #         # Stack only chunk_size elements at a time
+    #         chunk = jax.numpy.stack(chunk_qs)
+            
+    #         if not self._jit_chunk_check(chunk):
+    #             print(time.time() - a)
+    #             return False
+
+    #     print(time.time() - a)
+
+    #     return True
+
+    def _batch_is_collision_free_optimized_jit(self, qs_array, chunk_size: int = 64):
+        a = time.time()
+        n = qs_array.shape[0]
+        last = qs_array[-1]
+
+        for start in range(0, n, chunk_size):
+            chunk = qs_array[start:start + chunk_size]
+            pad_len = chunk_size - chunk.shape[0]
+            if pad_len > 0:
+                chunk = jax.numpy.concatenate(
+                    [chunk, jax.numpy.tile(last, (pad_len, 1))], axis=0
+                )
+            if not self._jit_chunk_check(chunk):
+                print(time.time() - a)
+                return False
+
+        print(time.time() - a)
+
+        return True
 
     def _make_single_check(self):
         # mjx_data = self.mjx_data
@@ -981,7 +1051,7 @@ class MjxEnv(MujocoEnvironment):
             ok = ok & jax.numpy.all(batch_result)
             return ok
 
-        jax.debug.print("{x}", x=num_batches)
+        # jax.debug.print("{x}", x=num_batches)
 
         all_ok = jax.lax.fori_loop(0, num_batches, body_fun, True)
         return all_ok
@@ -1074,20 +1144,33 @@ class MjxEnv(MujocoEnvironment):
         # Generate indices using your existing binary search method
         idx = generate_binary_search_indices(N)
 
-        q1_state = q1.state()
-        q2_state = q2.state()
+        # q1_state = q1.state()
+        # q2_state = q2.state()
+        # dir = (q2_state - q1_state) / (N - 1)
+
+        # # Prepare configurations to check
+        # qs = []
+        # for i in idx[N_start:N_max]:
+        #     if not include_endpoints and (i == 0 or i == N - 1):
+        #         continue
+        #     q = q1_state + dir * i
+        #     qs.append(q)
+    
+        q1_state = jax.numpy.array(q1.state())
+        q2_state = jax.numpy.array(q2.state())
         dir = (q2_state - q1_state) / (N - 1)
 
-        # Prepare configurations to check
-        qs = []
-        for i in idx[N_start:N_max]:
-            if not include_endpoints and (i == 0 or i == N - 1):
-                continue
-            q = q1_state + dir * i
-            qs.append(q)
+        valid_idx = [i for i in idx[N_start:N_max]
+                     if include_endpoints or (i != 0 and i != N - 1)]
 
-        if not qs:
+        if not valid_idx:
             return True
+
+        valid_idx_array = jax.numpy.array(valid_idx)
+        qs = q1_state + dir * valid_idx_array[:, None]
+
+        # if not qs:
+        #     return True
 
         # Decide whether to use parallel or sequential based on problem size
         # use_parallel = force_parallel or (len(qs) >= 20 and len(self._data_pool) > 1)
