@@ -3,10 +3,23 @@ import numpy as np
 from abc import ABC, abstractmethod
 import robotic
 
+# TODO (Liam)
+from dataclasses import dataclass
+from typing import Optional, List
+
 ##########
 # Note: might be a cooler demo if we also have skills that are 'env aware'
 # might also be more interesting planning wise.
 ##########
+
+# TODO (Liam) standardized output
+@dataclass
+class SkillRolloutResult:
+  trajectory: np.ndarray
+  times: np.ndarray
+  is_deterministic: bool = True
+  distributions: Optional[List] = None # Later with stochastic skills?
+  # ...
 
 # abstract class for skills.
 class DeterministicBaseSkill(ABC):
@@ -16,6 +29,27 @@ class DeterministicBaseSkill(ABC):
   @abstractmethod
   def step(self, q, env):
     pass
+
+  def rollout(self, q_init, env, t0, dt=0.1, max_steps=1000):
+    """
+    Rollout deterministic untimed skill till convergence
+    """
+    q = q_init.copy()
+    trajectory = [q]
+    times = [t0]
+    
+    for _ in range(max_steps):
+        q = self.step(q, env, dt)
+        times.append(times[-1] + dt)
+        trajectory.append(q)
+        
+        if self.done(q, env):
+            break
+    
+    return SkillRolloutResult(
+        trajectory=np.array(trajectory),
+        times=np.array(times),
+    )
 
 # abstract class for stochastic skills.
 class StochasticBaseSkill(ABC):
@@ -34,6 +68,29 @@ class BaseDeterministicTimedSkill(ABC):
   @abstractmethod
   def step(self, q, t, env):
     raise NotImplementedError
+
+  def rollout(self, q_init, env, t0, dt=0.1):
+    """
+    Rollout deterministic timed skill for fixed duration
+    """
+    n_steps = max(1, int(self.duration / dt))
+    q = q_init.copy()
+    trajectory = [q]
+    times = [t0]
+
+    for i in range(n_steps):
+        t_norm = (i + 1) / n_steps
+        q = self.step(t_norm, q, env, dt)
+        times.append(times[-1] + dt)
+        trajectory.append(q)
+        
+        if self.done(t_norm, q, env):
+            break
+    
+    return SkillRolloutResult(
+        trajectory=np.array(trajectory),
+        times=np.array(times),
+    )
 
 # abstract class for stochastic timed skills.
 class BaseStochasticTimedSkill(ABC):
