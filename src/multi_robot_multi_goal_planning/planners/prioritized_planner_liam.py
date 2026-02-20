@@ -96,7 +96,6 @@ class MultiRobotPath:
         "robot_ids",
         "timed_mode_sequence",
         "times",
-        "skill_time_ranges", # TODO (Liam)
     ]
 
     def __init__(self, q0: Configuration, m0: Mode, robots: List[str]):
@@ -119,11 +118,6 @@ class MultiRobotPath:
 
         for r in robots:
             self.paths[r] = []
-
-        # TODO (Liam) To track skill time ranges 
-        self.skill_time_ranges: Dict[str, List[Tuple[float, float]]] = {
-            r: [] for r in robots
-        }
     
     def get_mode_at_time(self, t: float) -> Mode:
         """Return active mode at time t"""
@@ -237,7 +231,6 @@ class MultiRobotPath:
         path: Path,
         next_mode: Optional[Mode],
         is_escape_path: bool = False,
-        is_skill: bool = False, # TODO (Liam)
     ):
         """
         Add a new path segment for one or more robots
@@ -275,14 +268,6 @@ class MultiRobotPath:
             self.timed_mode_sequence.append((final_time, next_mode))
             self.times.append(final_time)
 
-        # TODO (Liam)
-        # Track the skill execution start and end times
-        if is_skill:
-            for r in robots:
-                t0 = path.path[r].time[0]
-                t1 = path.path[r].time[-1]
-                self.skill_time_ranges[r].append((t0, t1))
-
     def remove_final_escape_path(self, robots: List[str]):
         """Remove escape path that are no longer needed (if better plan is found)"""
         for r in robots:
@@ -311,15 +296,18 @@ class MultiRobotPath:
                     T = max(T, v[-2].path.time[-1])
         return T
 
-    # TODO (Liam) Track skill
-    def is_in_skill_segment(self, robot: str, t: float) -> bool:
+    # TODO (Liam) Check for active skill at time t (easier inspecting mode than tracking time ranges..)    
+    def mode_has_skill_for_robot(self, env: BaseProblem, t: float, robot: str) -> bool:
         """
-        Check if time t is within a skill execution
+        Check if robot has an active skill at time t by inspecting the mode
         """
-        for t_start, t_end in self.skill_time_ranges[robot]:
-            if t_start <= t <= t_end:
-                return True
-        return False
+        mode = self.get_mode_at_time(t)
+        robot_idx = env.robot_ids[robot]
+        task_id = mode.task_ids[robot_idx]
+        if task_id is None:
+            return False
+        task = env.tasks[task_id]
+        return getattr(task, "skill", None) is not None
 
 def display_multi_robot_path(env: rai_env, path: MultiRobotPath, blocking=True):
     T = path.get_final_time()
@@ -525,12 +513,6 @@ def collision_free_with_moving_obs(
     logger.debug(f"coll check for {robots} at time {t}")
     logger.debug("Config %s", q)
 
-    # TODO (Liam) 
-    # Reject and config whose time falls inside skill interval for any robot 
-    for r in robots + other_robots:
-        if prev_plans.is_in_skill_segment(r, t):
-            return False
-
     # Step 1: Get mode (what objects are attached, etc.) at time t
     mode = prev_plans.get_mode_at_time(t)
 
@@ -582,14 +564,7 @@ def edge_collision_free_with_moving_obs(
 
     # Step 2: Generate uniformly spaced time points from ts to te
     times = [ts + tdiff * idx / (N - 1) for idx in range(N)]
-    
-    # TODO (Liam) 
-    # Also reject any time that lies inside a skill interval for any robot 
-    for tt in times:
-        for r in env.robots:
-            if prev_plans.is_in_skill_segment(r, tt):
-                return False
-    
+        
     # Step 3: Critical time points (when robot finishes tasks -> mode transitions happen)
     # Why? Crucial because a mode transition (e.g., robot picks up object) can change 
     # the collision geometry (discontinuously). Need to check exactly then
@@ -2000,7 +1975,8 @@ class PrioritizedPlannerConfig:
 # [o] Skill: add skill.duration attribute to deterministic timed skill class
 # [o] Skill: done() needs to be more generic terminal condition (check if current state is goal state), instead of convergence condition
 # [o] PP: What if we don't have another sequence when breaking to the outer loop?
-
+# [o] General: add types to arguments in all functions
+# [o] PP: multi-robot 
 class PrioritizedPlanner(BasePlanner):
     def __init__(
         self,
