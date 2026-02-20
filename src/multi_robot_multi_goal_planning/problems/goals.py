@@ -28,6 +28,10 @@ class Goal(ABC):
     def from_data(cls, data):
         pass
 
+# Goal to enable general constraints, e.g. on end effector
+class NonlinearGoal(Goal):
+    pass
+
 
 # class DummyGoal(ABC):
 #     def __init__(self):
