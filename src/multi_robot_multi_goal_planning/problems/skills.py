@@ -82,12 +82,14 @@ class BaseDeterministicTimedSkill(ABC):
   @abstractmethod
   def done(self, t, q, env):
     pass
-
+  
+  # TODO wrong use of t_norm in done -> checks if t_norm \in [0,1] > self.duration -> dead code
+  # TODO could make done() check t_norm >= 1.0?  
   def rollout(self, q_init, env, t0, dt=0.1):
     """
     Rollout deterministic timed skill for fixed duration
     """
-    n_steps = max(1, int(self.duration / dt))
+    n_steps = max(1, round(self.duration / dt))
     q = q_init.copy()
     trajectory = [q]
     times = [t0]
@@ -322,6 +324,7 @@ class Handover(DeterministicBaseSkill):
   def done(self, q, env):
     raise NotImplementedError
 
+# TODO!!! either use real or normalized time but not mix of both (in done)!
 class JogJoint(BaseDeterministicTimedSkill):
   def __init__(self, speed, idx, duration):
     self.speed = speed
@@ -334,7 +337,9 @@ class JogJoint(BaseDeterministicTimedSkill):
     return qn
 
   def done(self, t, q, env, dt=0.1):
-    if t > self.duration:
+    #if t > self.duration:
+    #print(t%10)
+    if t > 1.0:
       return True
 
     return False

@@ -1970,14 +1970,18 @@ class PrioritizedPlannerConfig:
 # [x] PP: fallback when skill fails? -> return None, None 
 # [x] PP: skill terminal configuration should always enable the mode transition?
 # [x] PP: consistent bookkeeping of the per-robot skill ranges? -> with skill_time_ranges Dict
-# [o] SKill: instead check if current mode contains a skill for a given robot? to avoid having to mark it explicitly before
+# [x] SKill: instead check if current mode contains a skill for a given robot? to avoid having to mark it explicitly before
 # [x] Skill: move rollout functions to the skill classes
-# [o] Skill: add skill.duration attribute to deterministic timed skill class
+# [x] Skill: add skill.duration attribute to deterministic timed skill class
+# [x] Skill: wrong use of t_norm in done -> checks if t_norm \in [0,1] > self.duration -> dead code, should be t_norm >= 1.0
 # [o] Skill: done() needs to be more generic terminal condition (check if current state is goal state), instead of convergence condition
 # [o] PP: What if we don't have another sequence when breaking to the outer loop?
 # [o] General: add types to arguments in all functions
-# [o] PP: multi-robot 
+# [o] PP: validate single-robot skill integration
+# [o] PP: implement multi-robot skill integration 
 # [o] Skill: consistent definitions 
+# [o] Collision: manage correctly Conifuration (function's arguments)
+# [o] Skill: currently operate on whole configuration to multi-robot settings -> should only operate on subset of configuration space
 class PrioritizedPlanner(BasePlanner):
     def __init__(
         self,
@@ -2005,7 +2009,8 @@ class PrioritizedPlanner(BasePlanner):
         """
         skill = task.skill
         robot = involved_robots[0] # Single robot assumed 
-        q_init = start_pose[0]
+        robot_idx = env.robot_idx[robot] # Joint indices for this robot
+        q_init = start_pose[0] 
 
         # Rollout the skill
         result = skill.rollout(q_init, env, t0)
@@ -2017,14 +2022,14 @@ class PrioritizedPlanner(BasePlanner):
             return None, None
 
         # Collision check
-        conf_type = type(env.get_start_pos())
+        conf_type = type(env.get_start_pos()) 
         for k in range(len(times)-1):
             qs_conf = conf_type.from_list([traj[k]])
             qe_conf = conf_type.from_list([traj[k+1]])            
             if not edge_collision_free_with_moving_obs(
                 env,
-                qs_conf,            # Configuration object
-                qe_conf,            # Configuration object
+                qs_conf, # NpConfiguration objects (contains only involved robots DOFs) -> constructs q_buffer in function...
+                qe_conf, 
                 times[k],
                 times[k+1],
                 prev_plans,
@@ -2034,7 +2039,7 @@ class PrioritizedPlanner(BasePlanner):
             ):
                 return None, None # Failure makes outer loop try different sequence
 
-        # Avoid shortcutting -> taken care of in robot_mode_shortcut()        
+        # Avoid shortcutting: taken care of in robot_mode_shortcut()        
 
         # Return 
         timed_path = TimedPath(time=times.tolist(), path=list(traj)) # TODO (Liam) check if correct type!

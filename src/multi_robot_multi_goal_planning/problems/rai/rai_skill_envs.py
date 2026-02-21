@@ -52,7 +52,7 @@ from ..registry import register
 class rai_single_agent_screw(SequenceMixin, rai_env):
     def __init__(self):
         self.C, self.robots, [pick_pose, pre_screw_pose] = rai_config.make_ur10_screwing_env()
-        # self.C.view(True)
+        self.C.view(True)
 
         print(pick_pose, pre_screw_pose)
 
@@ -99,7 +99,7 @@ class rai_single_agent_screw(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE  
-        # TODO (Liam) AttributeError: 'rai_single_agent_screw' object has no attribute 'safe_pose'
+        # TODO (Liam) added because AttributeError: 'rai_single_agent_screw' object has no attribute 'safe_pose'
         self.safe_pose = {}
         for r in self.robots:
             self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
@@ -153,7 +153,7 @@ class rai_single_agent_drawing(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
-        # TODO (Liam) AttributeError: 'rai_single_agent_screw' object has no attribute 'safe_pose'
+        # TODO (Liam) added because AttributeError: 'rai_single_agent_screw' object has no attribute 'safe_pose'
         self.safe_pose = {}
         for r in self.robots:
             self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
@@ -276,10 +276,6 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
-        # TODO (Liam) AttributeError: 'rai_single_agent_screw' object has no attribute 'safe_pose'
-        self.safe_pose = {}
-        for r in self.robots:
-            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
 
 # TODO unfinished
 @register("rai.single_agent_scripted_insert")
@@ -551,10 +547,6 @@ class rai_single_agent_bin_picking(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
-        # TODO (Liam) AttributeError: 'rai_single_agent_screw' object has no attribute 'safe_pose'
-        self.safe_pose = {}
-        for r in self.robots:
-            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
 
 # TODO unfinished
 # pick 'any' item from a bin

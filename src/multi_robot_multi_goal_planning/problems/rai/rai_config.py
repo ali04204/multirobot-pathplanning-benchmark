@@ -7925,6 +7925,13 @@ def make_ur10_screwing_env(view: bool = False):
         0
     ).setJoint(ry.JT.rigid)
 
+    # TODO (Liam) static obstacle between pick (x=0) and screw goal (x=0.5)
+    C.addFrame("block").setParent(table).setShape(
+        ry.ST.box, [0.06, 0.6, 0.3, 0.005]
+    ).setRelativePosition([0.25, 0., 0.22]).setColor(
+        [0.2, 0.2, 0.8]
+    ).setContact(1).setJoint(ry.JT.rigid)
+
     keyframes = []
 
     # compute keyframe for pick
