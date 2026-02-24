@@ -196,6 +196,7 @@ class MultiRobotPath:
             )
             self.paths[r].append(subpath)
 
+            # TODO: likely a bug! should probably be max over all final times
             final_time = path.path[r].time[-1]
             logger.debug("max_time of path:", final_time)
 
@@ -414,6 +415,7 @@ class Tree:
         node_list = self.nodes
         dists = self.batch_dist_fun(node, self.nodes, v_max)
 
+        # TODO dead code??
         k_clip = min(k, len(node_list) - 1)
         topk = np.argpartition(dists, k_clip)[:k_clip]
         topk[np.argsort(dists[topk])]
