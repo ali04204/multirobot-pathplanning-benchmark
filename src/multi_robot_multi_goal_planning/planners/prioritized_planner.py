@@ -196,6 +196,7 @@ class MultiRobotPath:
             )
             self.paths[r].append(subpath)
 
+            # Not a bug. all the paths always have the same end time if multiple robots are involved.
             final_time = path.path[r].time[-1]
             logger.debug("max_time of path:", final_time)
 
@@ -409,17 +410,6 @@ class Tree:
         #         best_dist = qd
 
         # return best_node
-
-    def get_near_neighbors(self, node: Node, k: int, v_max) -> List[Node]:
-        node_list = self.nodes
-        dists = self.batch_dist_fun(node, self.nodes, v_max)
-
-        k_clip = min(k, len(node_list) - 1)
-        topk = np.argpartition(dists, k_clip)[:k_clip]
-        topk[np.argsort(dists[topk])]
-
-        best_nodes = [node_list[i] for i in topk]
-        return best_nodes
 
     def add_node(self, new_node: Node, parent: Optional[Node]) -> None:
         node_list = self.nodes
