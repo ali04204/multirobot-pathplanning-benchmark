@@ -24,7 +24,7 @@ python3 examples/show_problems.py rai.box_stacking --mode modes
 
 
 # VIDEO
-python3 examples/run_planner.py rai.single_agent_screw       --planner=prioritized --max_time=30 --optimize --save
+python3 examples/run_planner.py rai.single_agent_screw --planner=prioritized --max_time=30 --optimize --save
 
 python3 examples/display_single_path.py ./out/20260220_224545_rai.single_agent_screw/prioritized/0/path_0.json rai.single_agent_screw --export
 

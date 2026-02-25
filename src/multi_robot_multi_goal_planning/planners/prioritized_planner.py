@@ -296,19 +296,6 @@ class MultiRobotPath:
                     T = max(T, v[-2].path.time[-1])
         return T
 
-    # TODO (Liam) Check for active skill at time t (easier inspecting mode than tracking time ranges..)    
-    def mode_has_skill_for_robot(self, env: BaseProblem, t: float, robot: str) -> bool:
-        """
-        Check if robot has an active skill at time t by inspecting the mode
-        """
-        mode = self.get_mode_at_time(t)
-        robot_idx = env.robot_ids[robot]
-        task_id = mode.task_ids[robot_idx]
-        if task_id is None:
-            return False
-        task = env.tasks[task_id]
-        return getattr(task, "skill", None) is not None
-
 def display_multi_robot_path(env: rai_env, path: MultiRobotPath, blocking=True):
     T = path.get_final_time()
     N = 5 * int(T)
@@ -2015,6 +2002,7 @@ class PrioritizedPlanner(BasePlanner):
             skill.joints.extend(env.robot_joints[r])
 
         # COncatenates only involved robots DOFs
+        # TODO (Liam) really necessary? (start_pose only contains involved_robot poses)
         q_init = conf_type.from_list(start_pose).state()
     
         result = skill.rollout(q_init, env, t0)
@@ -2360,11 +2348,11 @@ class PrioritizedPlanner(BasePlanner):
                 path = []
 
                 T = robot_paths.get_final_time() # Total makespan of the plan
-                N = 5 * int(np.ceil(T)) # Sample plan at N evenly spaced time points
+                N = 5 * int(np.ceil(T)) # Sample plan at N evenly spaced time points(uniform)
 
                 # At each sample time, query configs and current modes from robot_paths
                 for i in range(N):
-                    t = i * T / (N - 1)
+                    t = i * T / (N - 1) # dt constant
                     q = robot_paths.get_robot_poses_at_time(env.robots, t)
                     config = conf_type.from_list(q)
                     mode = robot_paths.get_mode_at_time(t)
@@ -2390,18 +2378,20 @@ class PrioritizedPlanner(BasePlanner):
                     path_w_doubled_modes = []
 
                     # Shortcutter needs to know exactly when a mode change happens
-                    # Example: State(qA,m1) -> State(qB,m2) ambiguous as we don't know where exactly change happens 
+                    # Example: State(qA,m1) -> State(qB,m2) ambiguous as we don't know where (which config) exactly change happens 
                     for i in range(len(path)):
                         path_w_doubled_modes.append(path[i])
 
                         # At every mode transition, insert extra state State(old_config, new_mode)
-                        # That way, mode transition happens at exact same config 
-                        # TODO (Liam) but shouldn't this node already exist? (our sampled transition nodes...)
-                        # NO!! This we do in the composite PRM planner (when sampling transition nodes!)
+                        # Example: State(qA,m1) -> State(qA,m2) -> State(qB,m2)
                         if i + 1 < len(path) and path[i].mode != path[i + 1].mode:
                             path_w_doubled_modes.append(
                                 State(path[i].q, path[i + 1].mode)
                             )
+                        
+                        # Explanation why shortcutting over modes is not allowed for active robots:
+                        # If we would shortcut, would create straight-line interpolation that skips exect config where, e.g., grasping happens.
+                        # Robot would hold object at configs where it hasn't actually grasped yet (or vice-versa). 
 
                     path = path_w_doubled_modes
 
