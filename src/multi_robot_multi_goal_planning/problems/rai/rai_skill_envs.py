@@ -31,7 +31,12 @@ from ..skills import (
     EEPoseGoalReaching,
     JogJoint,
     EndEffectorPositionFollowing,
-    StochasticBinPick
+    StochasticBinPick,
+    DualRobotGrasping
+)
+
+from ..constraints import (
+    relative_pose
 )
 
 from ..goals import (
@@ -58,6 +63,8 @@ class rai_single_agent_screw(SequenceMixin, rai_env):
 
         rai_env.__init__(self)
 
+        self.manipulating_env = True
+
         home_pose = self.C.getJointState()
 
         post_screw_pose = pre_screw_pose * 1.
@@ -68,6 +75,7 @@ class rai_single_agent_screw(SequenceMixin, rai_env):
                 "pick",
                 [self.robots[0]],
                 SingleGoal(pick_pose),
+                type="pick",
                 frames=["a1_ur_gripper_center", "obj1"]
             ),
             Task(
@@ -80,6 +88,7 @@ class rai_single_agent_screw(SequenceMixin, rai_env):
                 [self.robots[0]],
                 SingleGoal(post_screw_pose),
                 frames=["table", "obj1"],
+                type="place",
                 skill = JogJoint(speed=np.pi/2., idx=5, duration=2.) # just moving the final joint for a fixed time
             ),
             Task(
@@ -99,7 +108,6 @@ class rai_single_agent_screw(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE  
-        # TODO (Liam) added because AttributeError: 'rai_single_agent_screw' object has no attribute 'safe_pose'
         self.safe_pose = {}
         for r in self.robots:
             self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
@@ -154,7 +162,6 @@ class rai_single_agent_drawing(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
-        # TODO (Liam) added because AttributeError: object has no attribute 'safe_pose'
         self.safe_pose = {}
         for r in self.robots:
             self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
@@ -182,6 +189,7 @@ class rai_single_agent_lego(SequenceMixin, rai_env):
                 "pick",
                 ["a1"],
                 SingleGoal(pick_pose),
+                type="pick",
                 frames=["a1_ur_ee_marker", "obj1"]
             ),
             Task(
@@ -194,6 +202,7 @@ class rai_single_agent_lego(SequenceMixin, rai_env):
                 ["a1"],
                 SingleGoal(np.array([0.5, 0.5, 0])),
                 skill = EndEffectorPositionFollowing(lego_placement_path),
+                type="place",
                 frames=["table", "obj1"]
             ),
             Task(
@@ -385,7 +394,7 @@ class rai_multi_agent_stacking(SequenceMixin, rai_env):
 # draw the crl logo with 3 robots:
 # TODO this should be an unordered problem
 @register("rai.multi_agent_drawing")
-class rai_multi_agent_insert(SequenceMixin, rai_env):
+class rai_multi_agent_drawing(SequenceMixin, rai_env):
     def __init__(self):
         self.C = rai_config.make_multi_agent_drawing()
         # self.C.view(True)
@@ -451,6 +460,75 @@ class rai_multi_agent_pcb(SequenceMixin, rai_env):
 @register("rai.multi_agent_insert")
 class rai_multi_agent_insert(SequenceMixin, rai_env):
   pass
+
+@register([
+    ("rai.dual_arm_transport", {}),
+    ("rai.dual_arm_transport_rotation", {'rotation': True}),
+])
+class rai_dual_arm_transport(SequenceMixin, rai_env):
+    def __init__(self, rotation=False):
+        self.C, _, [self.pick_pose, _] = rai_config.make_bimanual_grasping_env(obstacle=False, rotate=rotation)
+        # self.C.view(True)
+
+        self.robots = ["a1", "a2"]
+
+        rai_env.__init__(self)
+
+        self.manipulating_env = True
+
+        home_pose = self.C.getJointState()
+
+        obj_start_pose = self.C.getFrame("obj1").getPose()
+        obj_goal_pose = self.C.getFrame("goal1").getPose()
+
+        ee_names = ["a1_ur_ee_marker", "a2_ur_ee_marker"]
+
+        self.C.setJointState(self.pick_pose)
+        
+        a1_pose = self.C.getFrame("a1_ur_ee_marker").getPose()
+        a2_pose = self.C.getFrame("a2_ur_ee_marker").getPose()
+        obj_pose = self.C.getFrame("obj1").getPose()
+
+        a1_transformation = relative_pose(a1_pose, obj_pose)
+        a2_transformation = relative_pose(a2_pose, obj_pose)
+
+        self.C.setJointState(home_pose)
+
+        self.tasks = [
+            Task(
+                "pick_1",
+                ["a1", "a2"],
+                SingleGoal(self.pick_pose),
+                frames=["a1_ur_ee_marker", "obj1"],
+                type="pick",
+            ),
+            Task(
+                "move",
+                ["a1", "a2"],
+                SingleGoal(self.pick_pose),
+                skill = DualRobotGrasping(ee_names, [a1_transformation, a2_transformation], obj_start_pose, obj_goal_pose),
+                type="place",
+                frames=["table", "obj1"]
+            
+            ),
+            Task(
+                "terminal",
+                ["a1", "a2"],
+                SingleGoal(home_pose),
+            ),
+        ]
+
+        self.sequence = self._make_sequence_from_names(
+            ["pick_1", "move", "terminal"]
+        )
+
+        self.collision_tolerance = 0.001
+        self.collision_resolution = 0.005
+
+        BaseModeLogic.__init__(self)
+
+        self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
+
 
 # TODO unfinished
 # pick 'any' item from a bin

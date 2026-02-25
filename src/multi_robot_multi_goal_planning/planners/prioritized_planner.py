@@ -257,6 +257,7 @@ class MultiRobotPath:
             )
             self.paths[r].append(subpath)
 
+            # Not a bug. all the paths always have the same end time if multiple robots are involved.
             final_time = path.path[r].time[-1]
             # final_time = max(final_time, path.path[r].time[-1]) # TODO (Liam)
             logger.debug("max_time of path:", final_time)
