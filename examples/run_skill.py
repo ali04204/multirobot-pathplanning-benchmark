@@ -41,7 +41,8 @@ def dual_arm_skill():
     np.random.seed(0)
     random.seed(0)
     
-    env = get_env_by_name("rai.dual_arm_transport")
+    # env = get_env_by_name("rai.dual_arm_transport")
+    env = get_env_by_name("rai.dual_arm_transport_rotation")
     env.C.setJointState(env.pick_pose)
 
     skill = env.tasks[1].skill

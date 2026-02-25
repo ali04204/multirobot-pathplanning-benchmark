@@ -6,7 +6,7 @@ import robotic
 # TODO (Liam)
 from dataclasses import dataclass
 from typing import Optional, List
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation as R, Slerp
 
 ##########
 # Note: might be a cooler demo if we also have skills that are 'env aware'
@@ -304,9 +304,17 @@ class DualRobotGrasping(BaseDeterministicTimedSkill):
 
     self.num_ik_iters = 2
 
+    self.key_rots = R.from_quat([self.obj_start_pose[3:], self.obj_end_pose[3:]], scalar_first=True)
+    self.slerp = Slerp([0,1], self.key_rots)
+
   def _get_desired_obj_pose_at_time(self, t):
     # TODO: check if we need to do the quaternion interpolation properly
-    return self.obj_start_pose + t * (self.obj_end_pose - self.obj_start_pose)
+    p_new = self.obj_start_pose[:3] + t * (self.obj_end_pose[:3] - self.obj_start_pose[:3]) 
+    
+    R_t = self.slerp([t])[0]
+    q = R_t.as_quat(scalar_first=True)
+
+    return np.concatenate([p_new, q])
 
   def step(self, t, q, env, dt=0.1):
     env.C.setJointState(q)

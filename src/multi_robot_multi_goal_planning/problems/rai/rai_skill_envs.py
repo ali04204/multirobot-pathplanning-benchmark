@@ -465,10 +465,13 @@ class rai_multi_agent_pcb(SequenceMixin, rai_env):
 class rai_multi_agent_insert(SequenceMixin, rai_env):
   pass
 
-@register("rai.dual_arm_transport")
+@register([
+    ("rai.dual_arm_transport", {}),
+    ("rai.dual_arm_transport_rotation", {'rotation': True}),
+])
 class rai_dual_arm_transport(SequenceMixin, rai_env):
-    def __init__(self):
-        self.C, _, [self.pick_pose, _] = rai_config.make_bimanual_grasping_env(obstacle=False, rotate=False)
+    def __init__(self, rotation=False):
+        self.C, _, [self.pick_pose, _] = rai_config.make_bimanual_grasping_env(obstacle=False, rotate=rotation)
         # self.C.view(True)
 
         self.robots = ["a1", "a2"]
