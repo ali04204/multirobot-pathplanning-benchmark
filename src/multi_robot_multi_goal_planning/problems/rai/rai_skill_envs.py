@@ -289,6 +289,11 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
 # TODO unfinished
+@register("rai.single_agent_bin_packing")
+class rai_single_agent_bin_packing(SequenceMixin, rai_env):
+  pass
+
+# TODO unfinished
 @register("rai.single_agent_scripted_insert")
 class rai_single_agent_scripted_insert(SequenceMixin, rai_env):
   pass
@@ -534,14 +539,16 @@ class rai_dual_arm_transport(SequenceMixin, rai_env):
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
 
+# TODO: figure out how we randomize stuff -> could be stored in mode?
+# would then be made into a stochastic version of the bin picking problem
+# allowign to simulate failure to grasp/rasping in diff. ways
 # TODO unfinished
 # pick 'any' item from a bin
-# Stochastic skill
 @register("rai.single_agent_bin_picking")
 class rai_single_agent_bin_picking(SequenceMixin, rai_env):
     def __init__(self):
-        self.C, [pre_pick_o1, pre_place_o1, pre_pick_o2, pre_place_o2] = rai_config.make_single_agent_bin_picking_env()
-        # self.C.view(True)
+        self.C, [pre_pick, pre_place_type_1, pre_place_type_2] = rai_config.make_single_agent_bin_picking_env()
+        self.C.view(True)
 
         self.robots = ["a1"]
 
@@ -551,77 +558,60 @@ class rai_single_agent_bin_picking(SequenceMixin, rai_env):
 
         home_pose = self.C.getJointState()
 
-        pick_position = self.C.getFrame("obj1").getPose()
-        place_position = self.C.getFrame("goal1").getPose()
-
         # assuming here that we have a place to set down an object, and we only need to go to a 'generic' position
         # above the bin for picking
-
-        # the planning itself is not that interesting here, since we only do a single robot, but this is a stochastic
-        # skill, therefore needing to deal with this.
         
-        self.tasks = [
-            Task(
-                "pre_pick_1",
-                ["a1"],
-                SingleGoal(pre_pick_o1),
-            ),
-            Task(
-                "pick_1",
-                ["a1"],
-                SingleGoal(pre_pick_o1),
-                frames=["a1_ur_gripper_center", "obj1"],
-                type="pick",
-                skill = StochasticBinPick()
-            ),
-            Task(
-                "pre_place_1",
-                ["a1"],
-                SingleGoal(pre_place_o1),
-            ),
-            Task(
-                "place_1",
-                ["a1"],
-                SingleGoal(pre_place_o1),
-                skill = StochasticBinPick(),
-                type="place",
-                frames=["table", "obj1"]
-            ),
-            Task(
-                "pre_pick_2",
-                ["a1"],
-                SingleGoal(pre_pick_o2),
-            ),
-            Task(
-                "pick_2",
-                ["a1"],
-                SingleGoal(pre_pick_o2),
-                frames=["a1_ur_gripper_center", "obj2"],
-                type="pick",
-                skill = StochasticBinPick()
-            ),
-            Task(
-                "pre_place_2",
-                ["a1"],
-                SingleGoal(pre_place_o2),
-            ),
-            Task(
-                "place_2",
-                ["a1"],
-                SingleGoal(pre_place_o2),
-                skill = StochasticBinPick(),
-                type="place",
-                frames=["table", "obj2"]
-            ),
+        self.tasks = []
+
+        for i in range(1,5):
+            if i%2 == 1:
+                place_pose = pre_place_type_1
+            else:
+                place_pose = pre_place_type_2
+            self.tasks.extend([
+                Task(
+                    f"pre_pick_{i}",
+                    ["a1"],
+                    SingleGoal(pre_pick),
+                ),
+                Task(
+                    f"pick_{i}",
+                    ["a1"],
+                    SingleGoal(pre_pick),
+                    frames=["a1_ur_gripper_center", f"obj{i}"],
+                    type="pick",
+                    skill = EEPoseGoalReaching(self.C.getFrame(f"obj{i}").getPose(), "a1_ur_gripper_center")
+                ),
+                Task(
+                    f"pre_place_{i}",
+                    ["a1"],
+                    SingleGoal(place_pose),
+                ),
+                Task(
+                    f"place_{i}",
+                    ["a1"],
+                    SingleGoal(place_pose),
+                    skill = EEPoseGoalReaching(self.C.getFrame(f"goal{i}").getPose(), f"obj{i}"),
+                    type="place",
+                    frames=["table", f"obj{i}"]
+                )
+            ])
+
+        self.tasks.append(
             Task(
                 "terminal",
                 ["a1"],
                 SingleGoal(home_pose),
-            ),
-        ]
+            ))
+
+        task_name_sequence = []
+        for i in range(1,5):
+            task_name_sequence.extend(
+                [f"pre_pick_{i}", f"pick_{i}", f"pre_place_{i}", f"place_{i}"]
+            )
 
         self.sequence = self._make_sequence_from_names(
-            ["pre_pick_1", "pick_1", "pre_place_1", "place_1", "pre_pick_2", "pick_2", "pre_place_2", "place_2", "terminal"]
+            task_name_sequence +  ["terminal"]
         )
 
         self.collision_tolerance = 0.001
@@ -639,20 +629,80 @@ class rai_single_agent_bin_picking(SequenceMixin, rai_env):
 @register("rai.multi_agent_bin_picking")
 class rai_multi_agent_bin_picking(SequenceMixin, rai_env):
     def __init__(self):
-        self.C = rai_config.make_multi_agent_bin_picking_env()
-        # self.C.view(True)
+        self.C, \
+            [a1_pre_pick, a1_pre_place_type_1, a1_pre_place_type_2], \
+            [a2_pre_pick, a2_pre_place_type_1, a2_pre_place_type_2] = \
+            rai_config.make_multi_agent_bin_picking()
+        self.C.view(True)
 
-        self.robots = ["a1", "a2", "a3"]
+        self.robots = ["a1", "a2"]
 
         rai_env.__init__(self)
 
+        self.manipulating_env = True
+
         home_pose = self.C.getJointState()
 
-        self.tasks = [
-            None
-        ]
+        # assuming here that we have a place to set down an object, and we only need to go to a 'generic' position
+        # above the bin for picking
+        
+        self.tasks = []
+
+        for i in range(1,5):
+            if i%2 == 1:
+                pre_pick = a1_pre_pick
+                place_pose = a1_pre_place_type_1
+                robot = "a1"
+
+            else:
+                pre_pick = a2_pre_pick
+                place_pose = a2_pre_place_type_2
+                robot = "a2"
+    
+            self.tasks.extend([
+                Task(
+                    f"pre_pick_{i}",
+                    [robot],
+                    SingleGoal(pre_pick),
+                ),
+                Task(
+                    f"pick_{i}",
+                    [robot],
+                    SingleGoal(pre_pick),
+                    frames=[f"{robot}_ur_gripper_center", f"obj{i}"],
+                    type="pick",
+                    skill = EEPoseGoalReaching(self.C.getFrame(f"obj{i}").getPose(), f"{robot}_ur_gripper_center")
+                ),
+                Task(
+                    f"pre_place_{i}",
+                    [robot],
+                    SingleGoal(place_pose),
+                ),
+                Task(
+                    f"place_{i}",
+                    [robot],
+                    SingleGoal(place_pose),
+                    skill = EEPoseGoalReaching(self.C.getFrame(f"goal{i}").getPose(), f"obj{i}"),
+                    type="place",
+                    frames=["table", f"obj{i}"]
+                )
+            ])
+
+        self.tasks.append(
+            Task(
+                "terminal",
+                ["a1", "a2"],
+                SingleGoal(home_pose),
+            ))
+
+        task_name_sequence = []
+        for i in range(1,5):
+            task_name_sequence.extend(
+                [f"pre_pick_{i}", f"pick_{i}", f"pre_place_{i}", f"place_{i}"]
+            )
 
         self.sequence = self._make_sequence_from_names(
+            task_name_sequence +  ["terminal"]
         )
 
         self.collision_tolerance = 0.001
