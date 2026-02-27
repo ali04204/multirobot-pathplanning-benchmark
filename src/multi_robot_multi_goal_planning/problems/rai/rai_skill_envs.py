@@ -222,6 +222,10 @@ class rai_single_agent_lego(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
+        
+        self.safe_pose = {}
+        for r in self.robots:
+            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
 
 
 # TODO: enable mode to only plan for a subset of dofs
@@ -287,6 +291,10 @@ class rai_single_agent_pick_and_place(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
+        
+        self.safe_pose = {}
+        for r in self.robots:
+            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
 
 # TODO unfinished
 @register("rai.single_agent_bin_packing")
@@ -334,6 +342,9 @@ class rai_multi_agent_pick_and_place(SequenceMixin, rai_env):
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
+        self.safe_pose = {}
+        for r in self.robots:
+            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
 
 # TODO unfinished
 # multi agent rearrangement with skills
@@ -538,6 +549,9 @@ class rai_dual_arm_transport(SequenceMixin, rai_env):
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
+        self.safe_pose = {}
+        for r in self.robots:
+            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
 
 # TODO: figure out how we randomize stuff -> could be stored in mode?
 # would then be made into a stochastic version of the bin picking problem
@@ -620,6 +634,10 @@ class rai_single_agent_bin_picking(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
+
+        self.safe_pose = {}
+        for r in self.robots:
+            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
 
 # TODO unfinished
 # pick 'any' item from a bin
@@ -712,6 +730,10 @@ class rai_multi_agent_bin_picking(SequenceMixin, rai_env):
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
 
+        self.safe_pose = {}
+        for r in self.robots:
+            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
+
 # TODO unfinished
 # skills: 
 # - multiple robots -> fast pcb assembly?
@@ -794,6 +816,10 @@ class rai_bimanual_sorting(SequenceMixin, rai_env):
         BaseModeLogic.__init__(self)
 
         self.spec.home_pose = SafePoseType.HAS_SAFE_HOME_POSE
+
+        self.safe_pose = {}
+        for r in self.robots:
+            self.safe_pose[r] = np.array(self.C.getJointState()[self.robot_idx[r]])
 
 # TODO unfinished
 # inspiration: https://arxiv.org/pdf/2511.04758
