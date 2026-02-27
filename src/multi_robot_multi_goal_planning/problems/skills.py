@@ -136,7 +136,7 @@ class EEPositionGoalReaching(DeterministicBaseSkill):
     
     # compute pid law
     q_dot = np.linalg.pinv(jac) @ err
-    q_dot = np.clip(q_dot, a_min=-self.qdot_clip*np.ones(q_dot.shape), a_max=self.qdot_clip*np.ones(q_dot.shape))
+    # q_dot = np.clip(q_dot, a_min=-self.qdot_clip*np.ones(q_dot.shape), a_max=self.qdot_clip*np.ones(q_dot.shape))
 
     # integrate to get next pos
     q_new = q - dt * q_dot
@@ -161,12 +161,12 @@ class EEPoseGoalReaching(DeterministicBaseSkill):
 
   def step(self, q, env, dt=0.1):
     # get jacobian
-    env.C.setJointState(q, self.joints)
+    env.C.setJointState(q)
     [err, jac] = env.C.eval(robotic.FS.pose, [self.ee_name], 1, self.goal_pose)
     
     # compute pid law
     q_dot = np.linalg.pinv(jac) @ err
-    q_dot = np.clip(q_dot, a_min=-self.qdot_clip*np.ones(q_dot.shape), a_max=self.qdot_clip*np.ones(q_dot.shape))
+    # q_dot = np.clip(q_dot, a_min=-self.qdot_clip*np.ones(q_dot.shape), a_max=self.qdot_clip*np.ones(q_dot.shape))
 
     # integrate to get next pos
     q_new = q - dt * q_dot
@@ -174,7 +174,7 @@ class EEPoseGoalReaching(DeterministicBaseSkill):
 
   def done(self, q, env):
     # get jacobian
-    env.C.setJointState(q, self.joints)
+    env.C.setJointState(q)
     [err, jac] = env.C.eval(robotic.FS.pose, [self.ee_name], 1, self.goal_pose)
 
     if np.linalg.norm(err) < 1e-3:
