@@ -39,7 +39,7 @@ def visualize_modes(env: rai_env, export_images: bool = False):
         if task.is_skill:
             task.skill.joints = env.robot_joints[task.robots[0]]
             skill_result = task.skill.rollout(env.C.getJointState(), env, 0)
-            goal_sample = skill_result.trajectory[-1]
+            goal_sample = skill_result.trajectory[-1][env.robot_idx[task.robots[0]]]
         else:
             goal_sample = task.goal.sample(m)
     

@@ -161,7 +161,7 @@ class EEPoseGoalReaching(DeterministicBaseSkill):
 
   def step(self, q, env, dt=0.1):
     # get jacobian
-    env.C.setJointState(q, self.joints)
+    env.C.setJointState(q)
     [err, jac] = env.C.eval(robotic.FS.pose, [self.ee_name], 1, self.goal_pose)
     
     # compute pid law
@@ -174,7 +174,7 @@ class EEPoseGoalReaching(DeterministicBaseSkill):
 
   def done(self, q, env):
     # get jacobian
-    env.C.setJointState(q, self.joints)
+    env.C.setJointState(q)
     [err, jac] = env.C.eval(robotic.FS.pose, [self.ee_name], 1, self.goal_pose)
 
     if np.linalg.norm(err) < 1e-3:

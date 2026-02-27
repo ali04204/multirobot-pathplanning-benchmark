@@ -773,7 +773,7 @@ class rai_multi_agent_bin_picking(SequenceMixin, rai_env):
                 place_pose = a2_pre_place_type_2
                 robot = "a2"
     
-            grasp_pose = self.C.getFrame(f"obj{i}").getPose() + np.array([0, 0, 0.15/2, 0, 0, 0, 0])
+            grasp_pose = self.C.getFrame(f"obj{i}").getPose() + np.array([0, 0, 0.05, 0, 0, 0, 0])
             grasp_pose[3:] = pose[3:]
 
             self.tasks.extend([
