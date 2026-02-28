@@ -570,11 +570,19 @@ class rai_single_agent_bin_picking(SequenceMixin, rai_env):
         
         self.tasks = []
 
+        self.C.setJointState(pre_pick, self.robot_joints["a1"])
+        pose = self.C.getFrame("a1_ur_gripper_center").getPose()
+        self.C.setJointState(home_pose)
+
         for i in range(1,5):
             if i%2 == 1:
                 place_pose = pre_place_type_1
             else:
                 place_pose = pre_place_type_2
+
+            grasp_pose = self.C.getFrame(f"obj{i}").getPose() + np.array([0, 0, 0.05, 0, 0, 0, 0])
+            grasp_pose[3:] = pose[3:]
+
             self.tasks.extend([
                 Task(
                     f"pre_pick_{i}",
@@ -587,7 +595,7 @@ class rai_single_agent_bin_picking(SequenceMixin, rai_env):
                     SingleGoal(pre_pick),
                     frames=["a1_ur_gripper_center", f"obj{i}"],
                     type="pick",
-                    skill = EEPositionGoalReaching(self.C.getFrame(f"obj{i}").getPosition() + np.array([0, 0, 0.05]), "a1_ur_gripper_center")
+                    skill = EEPoseGoalReaching(grasp_pose, "a1_ur_gripper_center")
                 ),
                 Task(
                     f"pre_place_{i}",
