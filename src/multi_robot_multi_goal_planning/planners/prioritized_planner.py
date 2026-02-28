@@ -1984,15 +1984,22 @@ class PrioritizedPlanner(BasePlanner):
         """
         skill = task.skill
         conf_type = type(env.get_start_pos()) 
+        q_init = conf_type.from_list(start_pose).state() # Only involved robots
 
         # Collect joints of involved robots (q_subset for skills)
         skill.joints = []
         for r in involved_robots:
             skill.joints.extend(env.robot_joints[r])
-        q_init = conf_type.from_list(start_pose).state() # Only involved robots
-    
+        
+        # Collect all joints (q_full)
+        all_joints = []
+        for r in env.robots:
+            all_joints.extend(env.robot_joints[r])
+
+        env.C.selectJoints(skill.joints) # Restrict to subspace
         result = skill.rollout(q_init, env, t0)
         traj, times = result.trajectory, result.times # Single flat arrays
+        env.C.selectJoints(all_joints) # Restore full space
         
         # Goal check # TODO (Liam) come clear on how to define skill goal checking..
         # if not task.goal.satisfies_constraints(traj[-1], mode=None, tolerance=1e-3):
