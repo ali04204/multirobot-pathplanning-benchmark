@@ -1971,8 +1971,7 @@ class PrioritizedPlanner(BasePlanner):
     def _execute_skill_task(
             self, 
             task, 
-            env: BaseProblem, 
-            involved_robots, 
+            env: BaseProblem,  
             start_pose, 
             t0,
             prev_plans: MultiRobotPath,
@@ -1982,23 +1981,22 @@ class PrioritizedPlanner(BasePlanner):
         Rollout skill
         Return path in same format as plan_robots_in_dyn_env()
         """
-        skill = task.skill
         conf_type = type(env.get_start_pos()) 
         q_init = conf_type.from_list(start_pose).state() # Only involved robots
 
         # Collect joints of involved robots (q_subset for skills)
-        skill.joints = []
-        for r in involved_robots:
-            skill.joints.extend(env.robot_joints[r])
+        task.skill.joints = []
+        for r in task.robots:
+            task.skill.joints.extend(env.robot_joints[r])
         
         # Collect all joints (q_full)
         all_joints = []
         for r in env.robots:
             all_joints.extend(env.robot_joints[r])
 
-        env.C.selectJoints(skill.joints) # Restrict to subspace
-        result = skill.rollout(q_init, env, t0)
-        traj, times = result.trajectory, result.times # Single flat arrays
+        env.C.selectJoints(task.skill.joints) # Restrict to subspace
+        skill_result = task.skill.rollout(q_init, env, t0)
+        traj, times = skill_result.trajectory, skill_result.times # Single flat arrays
         env.C.selectJoints(all_joints) # Restore full space
         
         # Goal check # TODO (Liam) come clear on how to define skill goal checking..
@@ -2010,7 +2008,7 @@ class PrioritizedPlanner(BasePlanner):
         for k in range(len(times)-1):
             parts_s, parts_e = [], []
             offset = 0
-            for r in involved_robots:
+            for r in task.robots:
                 dim = env.robot_dims[r]
                 parts_s.append(traj[k][offset : offset + dim])
                 parts_e.append(traj[k+1][offset : offset + dim])
@@ -2026,7 +2024,7 @@ class PrioritizedPlanner(BasePlanner):
                 times[k],
                 times[k+1],
                 prev_plans,
-                involved_robots,    
+                task.robots,    
                 end_times,
                 env.collision_resolution,
             ):
@@ -2038,7 +2036,7 @@ class PrioritizedPlanner(BasePlanner):
         # Rest of planner expects dict[robot -> Timedpath], one traj per robot 
         path = {}
         offset = 0
-        for r in involved_robots:
+        for r in task.robots:
             dim = env.robot_dims[r]
             sub_traj = [q[offset : offset + dim] for q in traj]
             path[r] = TimedPath(time=times.tolist(), path=sub_traj)
@@ -2190,7 +2188,7 @@ class PrioritizedPlanner(BasePlanner):
                     # Execute skill (instead of planning)
                     logger.info(">> This is a SKILL task")
                     path, final_pose = self._execute_skill_task(
-                        task, env, involved_robots, start_pose, t0,
+                        task, env, start_pose, t0,
                         prev_plans=robot_paths,
                         end_times=end_times,
                     )
