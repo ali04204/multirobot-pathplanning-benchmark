@@ -756,7 +756,11 @@ class rai_multi_agent_bin_picking(SequenceMixin, rai_env):
         self.tasks = []
 
         self.C.setJointState(a1_pre_pick, self.robot_joints["a1"])
-        pose = self.C.getFrame("a1_ur_gripper_center").getPose()
+        pose_a1 = self.C.getFrame("a1_ur_gripper_center").getPose()
+        self.C.setJointState(home_pose)
+
+        self.C.setJointState(a2_pre_pick, self.robot_joints["a2"])
+        pose_a2 = self.C.getFrame("a2_ur_gripper_center").getPose()
         self.C.setJointState(home_pose)
 
         for i in range(1,5):
@@ -764,12 +768,14 @@ class rai_multi_agent_bin_picking(SequenceMixin, rai_env):
                 pre_pick = a1_pre_pick
                 place_pose = a1_pre_place_type_1
                 robot = "a1"
+                pose = pose_a1
 
             else:
                 pre_pick = a2_pre_pick
                 place_pose = a2_pre_place_type_2
                 robot = "a2"
-    
+                pose = pose_a2
+
             grasp_pose = self.C.getFrame(f"obj{i}").getPose() + np.array([0, 0, 0.05, 0, 0, 0, 0])
             grasp_pose[3:] = pose[3:]
 
@@ -861,9 +867,16 @@ class rai_bimanual_sorting(SequenceMixin, rai_env):
         self.tasks = []
 
         for robot_name, [pre_pick, pre_place], obj_name, goal_name in zip(self.robots, [a1_keyframes, a2_keyframes], ["obj1", "obj2"], ["goal1", "goal2"]):
-            pick_position = self.C.getFrame(obj_name).getPose()
-            place_position = self.C.getFrame(goal_name).getPose()
-            
+            # pick_position = self.C.getFrame(obj_name).getPose()
+            # place_position = self.C.getFrame(goal_name).getPose()
+            # place_position = np.concatenate([goal_pose[:3], downward_quat])
+            # TODO (Liam) or change object definition in rai_config?
+            obj_pose = self.C.getFrame(obj_name).getPose() + np.array([0, 0, 0.05, 0, 0, 0, 0])
+            goal_pose = self.C.getFrame(goal_name).getPose() + np.array([0, 0, 0.05, 0, 0, 0, 0])
+            downward_quat = [0., 1., 0., 0.]
+            pick_position = np.concatenate([obj_pose[:3], downward_quat])
+            place_position = goal_pose
+
             self.tasks.extend([
                 Task(
                     robot_name + "_pre_pick",
@@ -876,7 +889,7 @@ class rai_bimanual_sorting(SequenceMixin, rai_env):
                     SingleGoal(pre_pick),
                     frames=[robot_name + "_ur_gripper_center", obj_name],
                     type="pick",
-                    skill = EEPoseGoalReaching(pick_position, robot_name + "ur_gripper_center")
+                    skill = EEPoseGoalReaching(pick_position, robot_name + "_ur_gripper_center")
                 ),
                 Task(
                     robot_name + "_pre_place",

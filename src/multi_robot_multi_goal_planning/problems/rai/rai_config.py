@@ -8302,7 +8302,7 @@ def make_bimanual_sorting(view: bool = False):
 
     # C.view(True)
 
-        # keyframes:
+    # keyframes:
     # draw start location (ee-goal)
     def compute_poses(C, robot_prefix, box, goal):
         # set everything but the current box to non-contact
