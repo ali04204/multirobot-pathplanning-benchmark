@@ -9209,12 +9209,17 @@ def make_multi_agent_bin_packing_env(view: bool = False):
         keyframes = solve_komo_problem(komo, 10, c_tmp, False, 3, 1.5)
         return keyframes
     
-    pre_pick_type_1, pre_place = compute_poses(C, "a1_ur_", "obj1", "goal1")
+    a1_pre_pick_type_1, a1_pre_place = compute_poses(C, "a1_ur_", "obj1", "goal1")
     _, _ = compute_poses(C, "a1_ur_", "obj2", "goal2")
-    pre_pick_type_2, _ = compute_poses(C, "a1_ur_", "obj3", "goal3")
+    a1_pre_pick_type_2, _ = compute_poses(C, "a1_ur_", "obj3", "goal3")
+
+    a2_pre_pick_type_1, a2_pre_place = compute_poses(C, "a2_ur_", "obj1", "goal1")
+    _, _ = compute_poses(C, "a2_ur_", "obj2", "goal2")
+    a2_pre_pick_type_2, _ = compute_poses(C, "a2_ur_", "obj3", "goal3")
+
     # _, _ = compute_poses(C, "a1_ur_", "obj4", "goal4")
 
-    return C, [pre_pick_type_1, pre_pick_type_2, pre_place]
+    return C, [a1_pre_pick_type_1, a1_pre_pick_type_2, a1_pre_place], [a2_pre_pick_type_1, a2_pre_pick_type_2, a2_pre_place]
 
 def make_multi_agent_pick_and_place(view: bool = False):
     pass

@@ -739,7 +739,7 @@ class rai_single_agent_bin_packing(SequenceMixin, rai_env):
 @register("rai.multi_agent_bin_packing")
 class rai_multi_agent_bin_packing(SequenceMixin, rai_env):
     def __init__(self):
-        self.C, [pre_pick_type_1, pre_pick_type_2, pre_place] = rai_config.make_multi_agent_bin_packing_env()
+        self.C, [a1_pre_pick_type_1, a1_pre_pick_type_2, a1_pre_place], [a2_pre_pick_type_1, a2_pre_pick_type_2, a2_pre_place] = rai_config.make_multi_agent_bin_packing_env()
         self.C.view(True)
 
         self.robots = ["a1", "a2"]
@@ -755,43 +755,53 @@ class rai_multi_agent_bin_packing(SequenceMixin, rai_env):
         
         self.tasks = []
 
-        self.C.setJointState(pre_place)
-        pose = self.C.getFrame("a1_ur_ee_marker").getPose()
+        self.C.setJointState(a1_pre_place, self.robot_joints["a1"])
+        a1_pose = self.C.getFrame("a1_ur_ee_marker").getPose()
+
+        self.C.setJointState(a2_pre_place, self.robot_joints["a2"])
+        a2_pose = self.C.getFrame("a2_ur_ee_marker").getPose()
         self.C.setJointState(home_pose)
 
         ee_name = "ee_marker"
 
         for i in range(1,4):
             if i in [1,2]:
-                pre_pick = pre_pick_type_1
+                robot = "a1"
+                pre_pick = a1_pre_pick_type_1
+                pose = a1_pose
+                pre_place = a1_pre_place
             else:
-                pre_pick = pre_pick_type_2
+                robot = "a2"
+                pre_pick = a2_pre_pick_type_2
+                pose = a2_pose
+                pre_place = a2_pre_place
             
+
             grasp_pose = self.C.getFrame(f"obj{i}").getPose() + np.array([0, 0, 0.15, 0, 0, 0, 0])
             grasp_pose[3:] = 1.*pose[3:]
 
             self.tasks.extend([
                 Task(
                     f"pre_pick_{i}",
-                    ["a1"],
+                    [robot],
                     SingleGoal(pre_pick),
                 ),
                 Task(
                     f"pick_{i}",
-                    ["a1"],
+                    [robot],
                     SingleGoal(pre_pick),
-                    frames=["a1_ur_" + ee_name, f"obj{i}"],
+                    frames=[robot + "_ur_" + ee_name, f"obj{i}"],
                     type="pick",
-                    skill = EEPoseGoalReaching(grasp_pose, "a1_ur_" + ee_name)
+                    skill = EEPoseGoalReaching(grasp_pose, robot + "_ur_" + ee_name)
                 ),
                 Task(
                     f"pre_place_{i}",
-                    ["a1"],
+                    [robot],
                     SingleGoal(pre_place),
                 ),
                 Task(
                     f"place_{i}",
-                    ["a1"],
+                    [robot],
                     SingleGoal(pre_place),
                     skill = EEPoseGoalReaching(self.C.getFrame(f"goal{i}").getPose(), f"obj{i}"),
                     type="place",
@@ -802,12 +812,12 @@ class rai_multi_agent_bin_packing(SequenceMixin, rai_env):
         self.tasks.append(
             Task(
                 "terminal",
-                ["a1"],
+                ["a1", "a2"],
                 SingleGoal(home_pose),
             ))
 
         task_name_sequence = []
-        for i in range(1,4):
+        for i in [1,3,2]:
             task_name_sequence.extend(
                 [f"pre_pick_{i}", f"pick_{i}", f"pre_place_{i}", f"place_{i}"]
             )
