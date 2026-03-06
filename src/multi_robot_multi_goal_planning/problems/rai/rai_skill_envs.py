@@ -914,6 +914,10 @@ class rai_multi_agent_bin_picking_base(rai_env):
                 )
             ])
 
+            # TEMORARY FIX
+            self.tasks[-1].skill.joints = self.robot_joints[robot]
+            self.tasks[-3].skill.joints = self.robot_joints[robot]
+
         self.tasks.append(
             Task(
                 "terminal",
