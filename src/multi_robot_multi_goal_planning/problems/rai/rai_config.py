@@ -4209,7 +4209,7 @@ def make_bimanual_grasping_env(obstacle, rotate=True, view: bool = False):
         ["a1_" + "ur_vacuum", box],
         ry.OT.eq,
         [1e1, 1e1, 1e1],
-        [-0.2, 0, 0]
+        [-0.1, 0, 0]
     )
     komo.addObjective(
         [1, 2],
@@ -4217,7 +4217,7 @@ def make_bimanual_grasping_env(obstacle, rotate=True, view: bool = False):
         ["a2_" + "ur_vacuum", box],
         ry.OT.eq,
         [1e1, 1e1, 1e1],
-        [0.2, 0, 0]
+        [0.1, 0, 0]
     )
 
     # komo.addObjective(

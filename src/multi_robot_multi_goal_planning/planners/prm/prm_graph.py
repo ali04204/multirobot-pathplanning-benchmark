@@ -38,6 +38,7 @@ class Node:
         "id",
         # TODO (Liam) NEW
         "is_skill_waypoint", 
+        "skill_step"
     ]
 
     # Class attribute
@@ -70,6 +71,7 @@ class Node:
 
         # TODO (Liam) NEW 
         self.is_skill_waypoint = False
+        self.skill_step = -1
 
     def __lt__(self, other: "Node") -> bool:
         return self.id < other.id
@@ -391,7 +393,7 @@ class MultimodalGraph:
                         self.reverse_transition_nodes[next_mode] = [next_node]
 
     # TODO (Liam) new
-    def add_skill_path(self, states, valid_next_modes):
+    def add_skill_path(self, entry_node, states, valid_next_modes):
         """
         Add skill states in the PRM graph.
         """
@@ -400,9 +402,10 @@ class MultimodalGraph:
         skill_nodes = []
         
         # 1. Protect intermediate nodes and add them to the graph
-        for s in states[:-1]:
+        for i, s in enumerate(states[:-1]):
             n = Node(s)
             n.is_skill_waypoint = True
+            n.skill_step = i
             skill_nodes.append(n)
             
         self.add_nodes(skill_nodes)
@@ -414,6 +417,18 @@ class MultimodalGraph:
         # 3. Protect the newly created transition node
         trans_node = self.transition_nodes[last_state.mode][-1]
         trans_node.is_skill_waypoint = True
+        trans_node.skill_step = len(states) - 1
+        skill_nodes.append(trans_node)
+
+        # 4. Link the sequence together through .neighbors and update whitelists
+        for i in range(len(skill_nodes) - 1):
+            skill_nodes[i].whitelist.add(skill_nodes[i+1].id)
+            skill_nodes[i+1].whitelist.add(skill_nodes[i].id)
+            skill_nodes[i].neighbors.append(skill_nodes[i+1])
+        
+        entry_node.whitelist.add(skill_nodes[0].id)
+        skill_nodes[0].whitelist.add(entry_node.id)
+        entry_node.neighbors.append(skill_nodes[0])
 
     # @profile # run with kernprof -l examples/run_planner.py [your environment] [your flags]
     # TODO (Liam) make changes in get_neighbors()
@@ -428,17 +443,15 @@ class MultimodalGraph:
           to other modes). Finds neighbors in both sets and combines them. 
         - Uses vectorized approaches (batched distance function) & caching to speed things up. 
 
-        New distinction: # TODO
-        - If the node is part of a skill trajectory, the spacial search should be bypassed so A* is forced to
-          step through the unrolled sequence?? that to ensure the exact skill trajectory is being followed
+        Distinction for skills:
+        - If the node is part of a skill trajectory, the spacial search is bypassed so A* is forced to
+          step through the unrolled sequence.
         """
         # TODO (Liam) new
-        # 
-        # 
-        # 
-        # 
-        #  
-
+        # Skill waypoints bypass search entirely (use only chain neighbors set in add_skill_path)
+        if node.is_skill_waypoint and node.neighbors:
+            arr = np.array([n.state.q.q for n in node.neighbors], dtype=np.float64)
+            return node.neighbors, arr
 
         # TODO (Liam) rest unchanged
         key = node.state.mode
@@ -778,6 +791,16 @@ class MultimodalGraph:
                 if n.id in n1.blacklist:
                     continue
 
+                # TODO (Liam) new
+                # Avoid A* jumping into step-k!=0 of skill traj 
+                is_n1_skill = getattr(n1, 'is_skill_waypoint', False)
+                is_n_skill = getattr(n, 'is_skill_waypoint', False)
+
+                if is_n_skill and not is_n1_skill:
+                    if n.skill_step != 0:
+                        continue
+                
+                # TODO (Liam) rest unchanged           
                 # edge_cost = edge_costs[i]
                 # g_new = g_tentative + edge_cost
 

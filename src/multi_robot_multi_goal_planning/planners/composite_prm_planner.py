@@ -378,9 +378,10 @@ class CompositePRM(BasePlanner):
 
         # 7. Convert to PRM States and add nodes to graph
         states = [State(self.env.start_pos.from_flat(q), mode) for q in composite_traj]
-        g.add_skill_path(states, valid_next_modes)
+        g.add_skill_path(entry_node, states, valid_next_modes)
         
-        print(f"[DEBUG ROLLOUT] Successfully added {len(states)} protected nodes into Mode {mode.id}")
+        # print(f"[DEBUG ROLLOUT] Successfully added {len(states)} protected nodes into Mode {mode.id}")
+        print(f"[DEBUG LINKED SEQUENCE] Linked {len(states)} nodes to entry_node {entry_node.id} in Mode {mode.id}")
         return True, valid_next_modes
         
     # TODO:
@@ -461,6 +462,7 @@ class CompositePRM(BasePlanner):
             )
 
             # TODO (Liam) new
+            # CRITICAL: Intercept if task is a skill
             # 1. Get task for this mode (just like in _sample_uniform_transition_configuration)
             if reached_terminal_mode:
                 next_ids = self.init_next_ids.get(mode)
@@ -469,7 +471,7 @@ class CompositePRM(BasePlanner):
             active_task = self.env.get_active_task(mode, next_ids)
                 
             # 2. Intercept if task is a skill
-            if active_task and getattr(active_task, 'skill', None) is not None:
+            if getattr(active_task, 'skill', None) is not None:
                 # print(f"[DEBUG SKILL] Intercepted skill for mode {mode.id}")
 
                 # Run the rollout
