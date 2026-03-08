@@ -8987,7 +8987,7 @@ def make_single_agent_bin_packing_env(view: bool = False):
         return keyframes
     
     pre_pick_type_1, pre_place = compute_poses(C, "a1_ur_", "obj1", "goal1")
-    _, _ = compute_poses(C, "a1_ur_", "obj2", "goal2")
+    # _, _ = compute_poses(C, "a1_ur_", "obj2", "goal2")
     pre_pick_type_2, _ = compute_poses(C, "a1_ur_", "obj3", "goal3")
     # _, _ = compute_poses(C, "a1_ur_", "obj4", "goal4")
 

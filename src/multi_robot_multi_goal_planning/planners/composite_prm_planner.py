@@ -302,11 +302,73 @@ class CompositePRM(BasePlanner):
         q = self.env.start_pos.from_list(q)
 
         return q
-
+    
+    def test_skill_rollout(self, g, mode, active_task):
+        """
+        Test if skill can be intercepted and rolled out correctly
+        """
+        candidate_nodes = g.reverse_transition_nodes.get(mode, [])
+        if not candidate_nodes:
+            candidate_nodes = g.nodes.get(mode, [])
+            
+        if not candidate_nodes:
+            return False
+            
+        entry_node = random.choice(candidate_nodes)
+        q_entry = entry_node.state.q.state()
+        
+        # 1. Identify active joints for this task
+        active_joints = []
+        for r in active_task.robots:
+            active_joints.extend(self.env.robot_joints[r])
+            
+        active_task.skill.joints = active_joints
+        
+        all_joints = []
+        for r in self.env.robots:
+            all_joints.extend(self.env.robot_joints[r])
+            
+        # 2. Extract starting configuration for active joints
+        parts = []
+        offset = 0
+        for r in self.env.robots:
+            dim = self.env.robot_dims[r]
+            if r in active_task.robots:
+                parts.append(q_entry[offset:offset+dim])
+            offset += dim            
+        q_init = np.concatenate(parts)
+        
+        # 3. Rollout
+        skill_result = active_task.skill.rollout(q_init, active_task, all_joints, self.env, t0=0.0)
+        traj = skill_result.trajectory
+                
+        # 4. Reconstruct composite trajectory (freeze inactive robots)
+        composite_traj = []
+        for step_q_active in traj:
+            full_q = q_entry.copy()
+            active_offset = 0
+            full_offset = 0
+            for r in self.env.robots:
+                dim = self.env.robot_dims[r]
+                if r in active_task.robots:
+                    full_q[full_offset:full_offset+dim] = step_q_active[active_offset:active_offset+dim]
+                    active_offset += dim
+                full_offset += dim
+            composite_traj.append(full_q)
+            
+        # 5. Prints
+        dist_moved = np.linalg.norm(composite_traj[0] - composite_traj[-1])
+        print(f"[DEBUG ROLLOUT] Mode {mode.id} Rollout | Steps: {len(composite_traj)} | Distance: {dist_moved:.4f}")
+        return True
+        
     # TODO:
     # - Introduce mode_subset_to_sample
     # - Fix function below:
     # -- reduce side-effects
+
+    # TODO (Liam) make changes in sample_valid_uniform_transitions()
+    # [x] Intercept if task is a skill (simple print)
+    # [o] Intercetp if task is a skill & rollout skill 
     def sample_valid_uniform_transitions(
         self,
         g,
@@ -376,6 +438,20 @@ class CompositePRM(BasePlanner):
                 mode_subset_to_sample, g, mode_sampling_type, cost is None
             )
 
+            # TODO (Liam) new
+            # 1. Get task for this mode (just like in _sample_uniform_transition_configuration)
+            if reached_terminal_mode:
+                next_ids = self.init_next_ids.get(mode)
+            else:
+                next_ids = self.mode_validation.get_valid_next_ids(mode)                
+            active_task = self.env.get_active_task(mode, next_ids)
+                
+            # 2. Intercept if task is a skill
+            if active_task and getattr(active_task, 'skill', None) is not None:
+                # print(f"[DEBUG SKILL] Intercepted skill for mode {mode.id}")
+                self.test_skill_rollout(g, mode, active_task)
+
+            # TODO (Liam) rest unchanged
             # Step 2: sample a transition configuration in that mode
             # Generates config q with active robots constrained to goal positions & other robots free
             # Uses mode information (unlike _sample_valid_uniform_batch), because transition nodes need to satisfy specific goal/task constraints
@@ -530,6 +606,8 @@ class CompositePRM(BasePlanner):
 
         return reached_modes
 
+    # TODO (Liam) make changes in _prune()
+    # [o] Pruner shouldn't delete skill nodes 
     def _prune(self, g, current_best_cost):
         """
         Discards nodes that don't improve shorter path.
