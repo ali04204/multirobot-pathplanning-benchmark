@@ -1629,7 +1629,11 @@ def shortcut_with_dynamic_obstacles(
     max_iter=500
 ):
     """
-    
+    Optimizes the path by using a shortcutting algorithm. 
+
+    Repetedly samples two random points on the path and tries to replace the
+    segment between them with a straight line. The shortcut is only accepted
+    if it is collision-free.
     """
     # Step 1: setup 
     logger.info("shortcutting")
@@ -1838,7 +1842,10 @@ def plan_robots_in_dyn_env(
     use_bidirectional_planner=True,
 ) -> Tuple[Optional[Dict[str, TimedPath]], Optional[NDArray]]:
     """
-    
+    Plans a path for a set of robots in a dynamic environment.
+
+    Wraps the space-time RRT planner, planning for the involved robots,
+    while treating the paths of other robots as dynamic obstacles.  
     """
     # Call i) bidirectional or ii) unidirectional time-space RRT planner 
     # Both consider the other_paths as dynamic obstacles
@@ -2017,10 +2024,12 @@ class PrioritizedPlanner(BasePlanner):
         optimize: bool = True,
     ) -> Tuple[List[State] | None, Dict[str, Any]]:
         """
-        Try multiple task orderings / sequences (OUTTER LOOP), and for each one, plan tasks
+        Plans a path for a sequence of tasks using a prioritized planning approach.
+
+        Tries multiple task orderings / sequences (OUTTER LOOP), and for each one, plans tasks
         one at a time, treating already-planned robots as dynamic obstacles (INNER LOOP).
 
-        Stop OUTTER LOOP if time runs out or sequences are exhausted.
+        Stops OUTTER LOOP if time runs out or sequences are exhausted.
 
         Returns: 
         - Best solution found (sequence of states with configs + modes)
