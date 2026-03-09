@@ -340,11 +340,11 @@ class CompositePRM(BasePlanner):
         
         # 3. Rollout
         skill_result = active_task.skill.rollout(q_init, active_task, all_joints, self.env, t0=0.0)
-        traj = skill_result.trajectory
+        skill_traj = skill_result.trajectory
                 
         # 4. Reconstruct composite trajectory (freeze inactive robots)
         composite_traj = []
-        for step_q_active in traj:
+        for step_q_active in skill_traj:
             full_q = q_entry.copy()
             active_offset = 0
             full_offset = 0
@@ -381,7 +381,7 @@ class CompositePRM(BasePlanner):
         g.add_skill_path(entry_node, states, valid_next_modes)
         
         # print(f"[DEBUG ROLLOUT] Successfully added {len(states)} protected nodes into Mode {mode.id}")
-        print(f"[DEBUG LINKED SEQUENCE] Linked {len(states)} nodes to entry_node {entry_node.id} in Mode {mode.id}")
+        # print(f"[DEBUG LINKED SEQUENCE] Linked {len(states)} nodes to entry_node {entry_node.id} in Mode {mode.id}")        
         return True, valid_next_modes
         
     # TODO:
@@ -473,6 +473,15 @@ class CompositePRM(BasePlanner):
             # 2. Intercept if task is a skill
             if getattr(active_task, 'skill', None) is not None:
                 # print(f"[DEBUG SKILL] Intercepted skill for mode {mode.id}")
+
+                # Skip rollout if there already is a skill trajectory for this mode
+                existing_skill_nodes = [
+                    n for n in g.nodes.get(mode, [])
+                    if getattr(n, 'is_skill_waypoint', False) and n.skill_step == 0
+                ]
+                if len(existing_skill_nodes) >= 1:
+                    failed_attemps += 1
+                    continue
 
                 # Run the rollout
                 success, valid_next_modes = self.test_skill_rollout(g, mode, active_task)
