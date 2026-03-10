@@ -38,6 +38,8 @@ from multi_robot_multi_goal_planning.planners import (
     BaseRRTConfig,
     RRTstar,
     BidirectionalRRTstar,
+    InformedRRTstar,
+    InformedRRTConfig,
     BaseITConfig,
     AITstar,
     EITstar,
@@ -152,6 +154,17 @@ def setup_planner(
 
         def planner(env):
             return BidirectionalRRTstar(env, config=config).plan(
+                ptc=RuntimeTerminationCondition(runtime),
+                optimize=optimize,
+            )
+    elif planner_config["type"] == "informed_rrtstar":
+        options = planner_config["options"]
+        config = InformedRRTConfig()
+        for k, v in options.items():
+            setattr(config, k, v)
+
+        def planner(env):
+            return InformedRRTstar(env, config=config).plan(
                 ptc=RuntimeTerminationCondition(runtime),
                 optimize=optimize,
             )

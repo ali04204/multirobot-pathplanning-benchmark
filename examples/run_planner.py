@@ -31,6 +31,8 @@ from multi_robot_multi_goal_planning.planners import (
     BaseRRTConfig,
     RRTstar,
     BidirectionalRRTstar,
+    InformedRRTstar,
+    InformedRRTConfig,
     BaseITConfig,
     AITstar,
     EITstar,
@@ -69,6 +71,7 @@ def main():
             "prioritized",
             "rrt_star",
             "birrt_star",
+            "informed_rrt_star",
             "aitstar",
             "eitstar",
             "short_horizon",
@@ -118,6 +121,7 @@ def main():
     # Add planner-specific configs - this is the ONLY change needed!
     parser.add_arguments(CompositePRMConfig, dest="composite_prm_config", prefix="prm.")
     parser.add_arguments(BaseRRTConfig, dest="rrt_config", prefix="rrt.")
+    parser.add_arguments(InformedRRTConfig, dest="informed_rrt_config", prefix="irrt.")
     parser.add_arguments(BaseITConfig, dest="it_config", prefix="it.")
     parser.add_arguments(PrioritizedPlannerConfig, dest="prioritized_config", prefix="prio.")
     parser.add_arguments(RecedingHorizonConfig, dest="horizon_config", prefix="horizon.")
@@ -161,6 +165,11 @@ def main():
         config = args.rrt_config
         config.distance_metric = args.distance_metric
         planner = BidirectionalRRTstar(env, config=config)
+
+    elif args.planner == "informed_rrt_star":
+        config = args.informed_rrt_config
+        config.distance_metric = args.distance_metric
+        planner = InformedRRTstar(env, config=config)
 
     elif args.planner == "aitstar":
         config = args.it_config

@@ -2,6 +2,7 @@ from .composite_prm_planner import CompositePRM, CompositePRMConfig
 from .rrtstar_base import BaseRRTConfig
 from .planner_rrtstar import RRTstar
 from .planner_birrtstar import BidirectionalRRTstar
+from .planner_informed_rrtstar import InformedRRTstar, InformedRRTConfig
 from .itstar_base import BaseITConfig
 from .planner_aitstar import AITstar
 from .planner_eitstar import EITstar
@@ -15,6 +16,8 @@ __all__ = [
     "BaseRRTConfig",
     "RRTstar",
     "BidirectionalRRTstar",
+    "InformedRRTstar",
+    "InformedRRTConfig",
     "BaseITConfig",
     "AITstar",
     "EITstar",

@@ -1,0 +1,62 @@
+This was run on rai_2dhandover. Standard rrt* vs informed rrt*. 
+
+Comparison: Informed RRT* vs Standard RRT*
+Metric	Informed RRT*	Standard RRT*
+Runtime	30 seconds	50 seconds
+Initial cost	44.74	51.38
+Final cost	19.38	18.86
+Iterations	12,507	19,820
+Solution improvements	20	~25
+Analysis
+Which is faster?
+Informed RRT* converges faster in early stages:
+
+At 30s: Informed RRT* reached 19.38, while RRT* was still around **20.5** at that point
+Informed RRT* found its first solution (44.74) faster than RRT* (51.38)
+Which has better final results?
+Standard RRT* achieved a slightly better final cost (18.86 vs 19.38), but it ran 67% longer (50s vs 30s).
+
+Why does RRT* eventually do better?
+The standard RRT* in this codebase already has informed_sampling=True enabled by default! So both planners use ellipsoidal sampling after finding an initial solution. The difference is:
+
+Informed RRT* has lower goal bias (p_goal=0.3 vs 0.4)
+Informed RRT* tracks prunable nodes (slight overhead)
+Verdict
+Use Case	Better Planner
+Time-critical (need fast feasible solution)	Informed RRT*
+Quality-critical (more time available)	Standard RRT* (marginal)
+Overall efficiency (cost per second)	Informed RRT*
+Informed RRT* achieves ~97% of RRT*'s quality in 60% of the time, making it more efficient for anytime planning scenarios.
+
+
+
+------
+
+
+
+
+
+
+Comparison: Informed RRT* vs RRT* (no informed sampling)
+Metric	Informed RRT*	RRT* (no informed)	Winner
+Runtime	30 sec	30 sec	Same
+Initial cost	44.74	51.38	Informed RRT*
+Final cost	19.38	21.12	Informed RRT*
+Iterations	12,507	19,533	RRT* (more iterations)
+Cost improvement	44.74 → 19.38 (57% reduction)	51.38 → 21.12 (59% reduction)	Similar
+Key Findings
+Informed RRT* is clearly better:
+9% better final cost (19.38 vs 21.12) in the same time
+15% better initial solution (44.74 vs 51.38)
+Fewer iterations but smarter sampling → each iteration is more valuable
+Why RRT* (no informed) has more iterations but worse results:
+Uniform sampling wastes effort in irrelevant regions
+After finding a solution, it keeps sampling everywhere instead of focusing on the ellipsoidal region that could improve the path
+More iterations ≠ better results when sampling is unfocused
+Visualization of sampling efficiency:
+Verdict
+Informed RRT is the clear winner* when compared fairly (same runtime, proper informed sampling enabled). The ellipsoidal heuristic sampling significantly improves convergence by focusing computational effort on regions that could actually improve the solution.
+
+
+
+
