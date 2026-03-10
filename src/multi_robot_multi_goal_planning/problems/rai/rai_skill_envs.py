@@ -144,7 +144,7 @@ class rai_single_agent_drawing(SequenceMixin, rai_env):
             Task(
                 "draw",
                 ["a1"],
-                SingleGoal(poses[0]), # TODO: figure out how to do skill goal checking (Valentin)
+                SingleGoal(poses[1]),
                 skill = EndEffectorPositionFollowing(*pts, "a1_stick_ee")
             ),
             Task(

@@ -8099,8 +8099,9 @@ def make_single_agent_drawing(view: bool = False):
         return keyframes[0, :]
 
     drawing_start_pos = compute_ik("a1_", [-0.5, 0, 0.1])
+    drawing_end_pos = compute_ik("a1_", [0.5, 0, 0.1])
 
-    return C, [drawing_start_pos]
+    return C, [drawing_start_pos, drawing_end_pos]
 
 
 def make_single_agent_pick_and_place(view: bool = False):
