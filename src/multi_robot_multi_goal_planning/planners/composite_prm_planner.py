@@ -307,6 +307,11 @@ class CompositePRM(BasePlanner):
         """
         Test if skill can be intercepted and rolled out correctly
         """
+        # TODO (Liam) how to pick better entry nodes? Or is my idea "correct"?
+        # Always: task... -> mode switch -> task (with skill) -> mode switch -> ...
+        # So if mode has task with skill, it will start executing it directly after the previous mode switch, correct?
+        
+        # 1. Pick entry node for skill
         candidate_nodes = g.reverse_transition_nodes.get(mode, [])
         if not candidate_nodes:
             candidate_nodes = g.nodes.get(mode, [])
@@ -317,7 +322,7 @@ class CompositePRM(BasePlanner):
         entry_node = random.choice(candidate_nodes)
         q_entry = entry_node.state.q.state()
         
-        # 1. Identify active joints for this task
+        # Identify active joints for this task
         active_joints = []
         for r in active_task.robots:
             active_joints.extend(self.env.robot_joints[r])
@@ -328,7 +333,7 @@ class CompositePRM(BasePlanner):
         for r in self.env.robots:
             all_joints.extend(self.env.robot_joints[r])
             
-        # 2. Extract starting configuration for active joints
+        # Extract starting configuration for active joints
         parts = []
         offset = 0
         for r in self.env.robots:
@@ -338,11 +343,11 @@ class CompositePRM(BasePlanner):
             offset += dim            
         q_init = np.concatenate(parts)
         
-        # 3. Rollout
+        # 2. Rollout
         skill_result = active_task.skill.rollout(q_init, active_task, all_joints, self.env, t0=0.0)
         skill_traj = skill_result.trajectory
                 
-        # 4. Reconstruct composite trajectory (freeze inactive robots)
+        # 3. Reconstruct composite trajectory (freeze inactive robots)
         composite_traj = []
         for step_q_active in skill_traj:
             full_q = q_entry.copy()
@@ -355,17 +360,16 @@ class CompositePRM(BasePlanner):
                     active_offset += dim
                 full_offset += dim
             composite_traj.append(full_q)
+
+        # 4. Collision check 
+        # TODO
             
-        # 5. Prints
+        # DEBUG
         dist_moved = np.linalg.norm(composite_traj[0] - composite_traj[-1])
         print(f"[DEBUG ROLLOUT] Mode {mode.id} Rollout | Steps: {len(composite_traj)} | Distance: {dist_moved:.4f}")
         # return True
-    
-        # 5. Check
-        if dist_moved < 1e-3:
-            return False, None
 
-        # 6. Determine valid next modes
+        # Determine valid next modes
         q_final = self.env.start_pos.from_flat(composite_traj[-1])
         if self.env.is_terminal_mode(mode):
             valid_next_modes = []
@@ -376,7 +380,7 @@ class CompositePRM(BasePlanner):
             if not valid_next_modes:
                 return False, None 
 
-        # 7. Convert to PRM States and add nodes to graph
+        # 5. Convert to PRM States and add nodes to graph
         states = [State(self.env.start_pos.from_flat(q), mode) for q in composite_traj]
         g.add_skill_path(entry_node, states, valid_next_modes)
         
