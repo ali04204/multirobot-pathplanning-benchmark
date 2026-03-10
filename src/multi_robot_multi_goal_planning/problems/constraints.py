@@ -9,7 +9,10 @@ from numpy.typing import NDArray
 from .configuration import Configuration
 
 # from .rai_base_env import rai_env
-import robotic
+try:
+    import robotic
+except ImportError:
+    robotic = None
 
 class Constraint(ABC):
     @abstractmethod
@@ -72,7 +75,8 @@ class AffineTaskSpaceEqualityConstraint(Constraint):
             env.set_to_mode(mode)
         
         env.C.setJointState(q_vec)
-
+        if robotic is None:
+            raise ImportError("robotic (RAI) backend not installed. This constraint requires RAI.")
         [y, J] = env.C.eval(robotic.FS.pose, [self.frame_name], self.mat, self.constraint_pose)
         return y
     

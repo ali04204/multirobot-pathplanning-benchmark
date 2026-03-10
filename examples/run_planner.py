@@ -8,22 +8,16 @@ import datetime
 import os
 import random
 
-import copy
-
 from multi_robot_multi_goal_planning.problems import get_env_by_name
-
 from multi_robot_multi_goal_planning.problems.planning_env import State
 from multi_robot_multi_goal_planning.problems.util import interpolate_path
 
-# planners
 from multi_robot_multi_goal_planning.planners.termination_conditions import (
     IterationTerminationCondition,
     RuntimeTerminationCondition,
 )
 
 from multi_robot_multi_goal_planning.planners import (
-    PrioritizedPlanner,
-    PrioritizedPlannerConfig,
     CompositePRM,
     CompositePRMConfig,
     single_mode_shortcut,
@@ -38,30 +32,29 @@ from multi_robot_multi_goal_planning.planners import (
     RecedingHorizonPlanner,
 )
 
-from run_experiment import export_planner_data
+try:
+    from multi_robot_multi_goal_planning.planners import (
+        PrioritizedPlanner,
+        PrioritizedPlannerConfig,
+    )
+except ImportError:
+    PrioritizedPlanner = None
+    PrioritizedPlannerConfig = None
 
 import logging
-# logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
+
 def main():
-    # parser = argparse.ArgumentParser(description="Planner runner")
     parser = ArgumentParser(description="Planner runner")
 
     parser.add_argument("env", nargs="?", default="default", help="env to show")
-    parser.add_argument(
-        "--optimize",
-        action="store_true",
-        help="Enable optimization (default: True)",
-    )
+    parser.add_argument("--optimize", action="store_true", help="Enable optimization")
     parser.add_argument("--seed", type=int, default=1, help="Seed")
-    parser.add_argument("--run_id", type=int, default=0, help="Run id. Used for debugging only.")
-    parser.add_argument(
-        "--num_iters", type=int, help="Maximum number of iterations for termination."
-    )
-    parser.add_argument(
-        "--max_time", type=float, help="Maximum runtime (in seconds) for termination."
-    )
+    parser.add_argument("--run_id", type=int, default=0, help="Run id for debugging only.")
+    parser.add_argument("--num_iters", type=int, help="Maximum number of iterations.")
+    parser.add_argument("--max_time", type=float, help="Maximum runtime in seconds.")
+
     parser.add_argument(
         "--planner",
         choices=[
@@ -74,52 +67,59 @@ def main():
             "short_horizon",
         ],
         default="composite_prm",
-        help="Planner to use (default: composite_prm)",
+        help="Planner to use",
     )
+
     parser.add_argument(
         "--distance_metric",
         choices=["euclidean", "sum_euclidean", "max", "max_euclidean"],
         default="max_euclidean",
-        help="Distance metric to use (default: max)",
+        help="Distance metric",
     )
+
     parser.add_argument(
         "--per_agent_cost_function",
         choices=["euclidean", "max"],
         default="euclidean",
-        help="Per agent cost function to use (default: max)",
+        help="Per agent cost function",
     )
+
     parser.add_argument(
         "--cost_reduction",
         choices=["sum", "max"],
         default="max",
-        help="How the agent specific cost functions are reduced to one single number (default: max)",
+        help="How per agent costs are reduced to one value",
     )
+
     parser.add_argument(
         "--save",
         action="store_true",
-        help="Try shortcutting the solution.",
+        help="Export planner data to ./out (may require RAI backend on Windows).",
     )
+
     parser.add_argument(
         "--stop_at_mode",
         action="store_true",
-        help="Generate samples near a previously found path (default: False)",
+        help="Stop at mode changes when displaying the path.",
     )
+
     parser.add_argument(
         "--insert_transition_nodes",
         action="store_true",
-        help="Shortcut the path. (default: False)",
+        help="Insert transition nodes for visualization.",
     )
+
     parser.add_argument(
         "--show_plots",
         action="store_true",
-        help="Show some analytics plots. (default: False)",
+        help="Show analytics plots.",
     )
 
-    # Add planner-specific configs - this is the ONLY change needed!
     parser.add_arguments(CompositePRMConfig, dest="composite_prm_config", prefix="prm.")
     parser.add_arguments(BaseRRTConfig, dest="rrt_config", prefix="rrt.")
     parser.add_arguments(BaseITConfig, dest="it_config", prefix="it.")
-    parser.add_arguments(PrioritizedPlannerConfig, dest="prioritized_config", prefix="prio.")
+    if PrioritizedPlannerConfig is not None:
+        parser.add_arguments(PrioritizedPlannerConfig, dest="prioritized_config", prefix="prio.")
     parser.add_arguments(RecedingHorizonConfig, dest="horizon_config", prefix="horizon.")
 
     args = parser.parse_args()
@@ -134,22 +134,16 @@ def main():
     env.cost_reduction = args.cost_reduction
     env.cost_metric = args.per_agent_cost_function
 
-    # env.show()
-
-    termination_condition = None
     if args.num_iters is not None:
         termination_condition = IterationTerminationCondition(args.num_iters)
     elif args.max_time is not None:
         termination_condition = RuntimeTerminationCondition(args.max_time)
+    else:
+        raise ValueError("You must specify either --num_iters or --max_time.")
 
-    assert termination_condition is not None
-
-    # env_copy = copy.deepcopy(env)
-
-    # Now just use the config objects directly!
     if args.planner == "composite_prm":
         config = args.composite_prm_config
-        config.distance_metric = args.distance_metric  # Override if needed
+        config.distance_metric = args.distance_metric
         planner = CompositePRM(env, config)
 
     elif args.planner == "rrt_star":
@@ -173,6 +167,10 @@ def main():
         planner = EITstar(env, config=config)
 
     elif args.planner == "prioritized":
+        if PrioritizedPlanner is None:
+            raise ImportError(
+                "PrioritizedPlanner requires the RAI 'robotic' backend which is not available on Windows."
+            )
         config = args.prioritized_config
         planner = PrioritizedPlanner(env, config)
 
@@ -180,35 +178,38 @@ def main():
         config = args.horizon_config
         planner = RecedingHorizonPlanner(env, config)
 
+    else:
+        raise ValueError(f"Unknown planner: {args.planner}")
+
     np.random.seed(args.seed + args.run_id)
     random.seed(args.seed + args.run_id)
 
     path, info = planner.plan(ptc=termination_condition, optimize=args.optimize)
+    if path is None:
+        raise RuntimeError("Planner returned no path.")
 
     if args.save:
+        try:
+            from run_experiment import export_planner_data
+        except ImportError as e:
+            raise ImportError(
+                "Saving imports run_experiment which pulls in the RAI backend. "
+                "On Windows without robotic, run without --save."
+            ) from e
+
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        # convention: alsways use "/" as trailing character
         experiment_folder = f"./out/{timestamp}_{args.env}/"
-
-        # export_config(experiment_folder, config)
-
-        if not os.path.isdir(experiment_folder):
-            os.makedirs(experiment_folder)
+        os.makedirs(experiment_folder, exist_ok=True)
 
         planner_folder = experiment_folder + args.planner + "/"
         export_planner_data(planner_folder, 0, info)
-
-    assert path is not None
 
     if args.insert_transition_nodes:
         path_w_doubled_modes = []
         for i in range(len(path)):
             path_w_doubled_modes.append(path[i])
-
             if i + 1 < len(path) and path[i].mode != path[i + 1].mode:
                 path_w_doubled_modes.append(State(path[i].q, path[i + 1].mode))
-
         path = path_w_doubled_modes
 
     print("robot-mode-shortcut")
@@ -237,18 +238,18 @@ def main():
     print("Checking task shortcutted path for validity")
     print(env.is_valid_plan(shortcut_path))
 
-    print("cost", info["costs"])
-    print("comp_time", info["times"])
+    print("cost", info.get("costs"))
+    print("comp_time", info.get("times"))
 
     if args.show_plots:
         plt.figure()
         plt.plot(info["times"], info["costs"], "-o", drawstyle="steps-post")
 
         plt.figure()
-        for name, info in zip(
+        for name, shortcut_info in zip(
             ["task-shortcut", "mode-shortcut"], [info_shortcut, info_single_mode_shortcut]
         ):
-            plt.plot(info[1], info[0], drawstyle="steps-post", label=name)
+            plt.plot(shortcut_info[1], shortcut_info[0], drawstyle="steps-post", label=name)
 
         plt.xlabel("time")
         plt.ylabel("cost")
@@ -265,7 +266,8 @@ def main():
             label="Original",
         )
         plt.plot(
-            env.batch_config_cost(shortcut_path[:-1], shortcut_path[1:]), label="Shortcut"
+            env.batch_config_cost(shortcut_path[:-1], shortcut_path[1:]),
+            label="Shortcut",
         )
         plt.plot(mode_switch_indices, [0.1] * len(mode_switch_indices), "o")
         plt.legend()
@@ -283,7 +285,6 @@ def main():
         plt.legend()
 
         plt.figure()
-
         plt.plot(
             [pt.q[0][0] for pt in interpolated_path],
             [pt.q[0][1] for pt in interpolated_path],
@@ -294,7 +295,6 @@ def main():
             [pt.q[1][1] for pt in interpolated_path],
             "o-",
         )
-
         plt.plot(
             [pt.q[0][0] for pt in shortcut_discretized_path],
             [pt.q[0][1] for pt in shortcut_discretized_path],
@@ -309,7 +309,6 @@ def main():
         plt.show()
 
     print("displaying path from planner")
-    # display starting configuration to not run it immediately
     env.show(blocking=True)
     env.display_path(
         interpolated_path,

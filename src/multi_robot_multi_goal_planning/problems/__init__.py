@@ -1,15 +1,17 @@
-import os
-import sys
 import importlib.util
 
-from . import rai_envs
-from . import rai_single_goal_envs
-from . import rai_unordered_envs
-from . import rai_free_envs
+# Always available
 from . import abstract_env
-from . import rai_envs_constrained
 
+# Only load RAI environments if the 'robotic' module exists
+if importlib.util.find_spec("robotic") is not None:
+    from . import rai_envs
+    from . import rai_single_goal_envs
+    from . import rai_unordered_envs
+    from . import rai_free_envs
+    from . import rai_envs_constrained
 
+# Optional backends
 if importlib.util.find_spec("pinocchio") is not None:
     from . import pinocchio_env
 
