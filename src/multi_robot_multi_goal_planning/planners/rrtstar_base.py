@@ -606,7 +606,9 @@ class BaseRRTstar(BasePlanner):
             new_modes = self.env.get_next_modes(q, mode)
             new_modes = self.mode_validation.get_valid_modes(mode, tuple(new_modes))
             if new_modes == []:
-                self.modes = self.mode_validation.track_invalid_modes(mode, self.modes)
+                modes_set = set(self.modes) if not isinstance(self.modes, set) else self.modes
+                filtered_modes = self.mode_validation.track_invalid_modes(mode, modes_set)
+                self.modes = list(filtered_modes) if isinstance(filtered_modes, set) else filtered_modes
             self.save_tree_data()
 
         for new_mode in new_modes:
@@ -659,7 +661,9 @@ class BaseRRTstar(BasePlanner):
         next_modes = self.env.get_next_modes(n.state.q, mode)
         next_modes = self.mode_validation.get_valid_modes(mode, tuple(next_modes))
         if next_modes == []:
-            self.modes = self.mode_validation.track_invalid_modes(mode, self.modes)
+            modes_set = set(self.modes) if not isinstance(self.modes, set) else self.modes
+            filtered_modes = self.mode_validation.track_invalid_modes(mode, modes_set)
+            self.modes = list(filtered_modes) if isinstance(filtered_modes, set) else filtered_modes
 
         for next_mode in next_modes:
             if next_mode not in self.modes:
@@ -899,9 +903,11 @@ class BaseRRTstar(BasePlanner):
                 if self.config.with_mode_validation:
                     self.modes.remove(mode)
                     self.mode_validation.add_invalid_mode(mode)
-                    self.modes = self.mode_validation.track_invalid_modes(
-                        mode.prev_mode, self.modes
+                    modes_set = set(self.modes) if not isinstance(self.modes, set) else self.modes
+                    filtered_modes = self.mode_validation.track_invalid_modes(
+                        mode.prev_mode, modes_set
                     )
+                    self.modes = list(filtered_modes) if isinstance(filtered_modes, set) else filtered_modes
                 else:
                     self.blacklist_mode.add(mode)
                     self.modes.remove(mode)
