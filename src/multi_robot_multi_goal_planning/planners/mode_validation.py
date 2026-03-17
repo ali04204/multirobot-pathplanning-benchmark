@@ -151,11 +151,19 @@ class ModeValidation:
 
         invalid_next_modes = self.invalid_next_ids.get(mode, set())
 
-        while True:
-            next_task = random.choice(possible_next_task_combinations)
-            if tuple(next_task) in invalid_next_modes:
-                continue
-            return next_task
+        # Filter to only valid combinations
+        valid_combinations = [
+            task for task in possible_next_task_combinations
+            if tuple(task) not in invalid_next_modes
+        ]
+
+        if not valid_combinations:
+            # All combinations are invalid, mark this mode as invalid
+            if not self.env.is_terminal_mode(mode):
+                _ = self.track_invalid_modes(mode)
+            return None
+
+        return random.choice(valid_combinations)
 
     def add_invalid_mode(self, mode: Mode) -> None:
         """

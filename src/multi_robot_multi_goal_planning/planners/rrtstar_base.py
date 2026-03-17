@@ -990,7 +990,8 @@ class BaseRRTstar(BasePlanner):
             if random.choice([0, 1]) == 0:
                 return q
 
-            while True:
+            noise_attempts = 0
+            while noise_attempts < 100:
                 q_noise = []
                 for r in range(len(self.env.robots)):
                     q_robot = q.robot_state(r)
@@ -999,14 +1000,16 @@ class BaseRRTstar(BasePlanner):
                 q = type(self.env.get_start_pos()).from_list(q_noise)
                 if self.env.is_collision_free(q, mode):
                     return q
+                noise_attempts += 1
 
     def _sample_uniform(self, mode: Mode):
-        while True:
+        for attempt in range(500):
             q = self.env.sample_config_uniform_in_limits()
 
             if self.env.is_collision_free(q, mode):
                 return q
             # self.env.show(False)
+        return None
 
     def sample_informed(
         self,
